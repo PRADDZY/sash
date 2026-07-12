@@ -34,8 +34,10 @@ modal run modal_app.py --stage infer --model finetuned
 modal run modal_app.py --stage analyze
 ```
 
-The pilot estimates full-run GPU cost and stops if the projected primary spend exceeds
-$55, preserving the remainder of a $70 budget for reruns and artifact generation.
+The pilot estimates full-run GPU cost on an A10 and stops if the projected primary spend
+exceeds $55, preserving the remainder of a $70 budget for reruns and artifacts. A10 is
+used because this Modal workspace does not currently permit L40S functions without a
+payment method.
 
 Research artifacts are written to the Modal volume `sash-vlm-safety`. No result is
 hard-coded into the paper; result macros are generated only from completed predictions.

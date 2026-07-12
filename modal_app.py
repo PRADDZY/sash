@@ -40,7 +40,8 @@ DATASET_ID = "lmms-lab/VizWiz-VQA"
 DATASET_REVISION = "d428a2dae984f79cf1b9d99467dfa883e0c30686"
 NATURAL_ROWS = 4319
 SHIFT_ROWS = 1200
-L40S_HOURLY_USD = 1.9512
+GPU_TYPE = "A10"
+GPU_HOURLY_USD = 1.1016
 PRIMARY_GPU_BUDGET_USD = 55.0
 
 app = modal.App(APP_NAME, tags={"project": "sash-vlm-safety"})
@@ -183,12 +184,12 @@ def _project_cost(stats: dict[str, float | int]) -> float:
         + natural_rate * NATURAL_ROWS
         + shift_rate * SHIFT_ROWS
     )
-    return projected_seconds / 3600 * L40S_HOURLY_USD
+    return projected_seconds / 3600 * GPU_HOURLY_USD
 
 
 @app.function(
     image=runtime_image,
-    gpu="L40S",
+    gpu=GPU_TYPE,
     cpu=4,
     memory=32_768,
     timeout=18 * 60 * 60,

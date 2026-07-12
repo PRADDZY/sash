@@ -102,6 +102,7 @@ class QwenVLAuditor:
             str(model_path),
             min_pixels=MIN_PIXELS,
             max_pixels=MAX_PIXELS,
+            fix_mistral_regex=True,
             local_files_only=True,
         )
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
@@ -122,11 +123,16 @@ class QwenVLAuditor:
         self.generation_config = GenerationConfig(
             do_sample=False,
             num_beams=1,
+            temperature=None,
+            top_k=None,
+            top_p=None,
             max_new_tokens=max_new_tokens,
             use_cache=True,
+            bos_token_id=tokenizer.bos_token_id,
             eos_token_id=tokenizer.eos_token_id,
             pad_token_id=pad_id,
         )
+        self.model.generation_config = self.generation_config
         torch.cuda.reset_peak_memory_stats()
 
     @property
@@ -146,6 +152,7 @@ class QwenVLAuditor:
             add_generation_prompt=True,
             return_dict=True,
             return_tensors="pt",
+            truncation=False,
         )
         return {
             key: value.to(self.device) if hasattr(value, "to") else value
