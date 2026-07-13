@@ -681,19 +681,29 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
     def number(value: float, digits: int = 3) -> str:
         return "--" if not math.isfinite(float(value)) else f"{float(value):.{digits}f}"
 
-    def percent(value: float) -> str:
-        return "--" if not math.isfinite(float(value)) else f"{100 * float(value):.1f}\\%"
+    def percent(value: float, digits: int = 1) -> str:
+        return (
+            "--"
+            if not math.isfinite(float(value))
+            else f"{100 * float(value):.{digits}f}\\%"
+        )
 
     def threshold(value: float) -> str:
         return "\\ensuremath{\\infty}" if math.isinf(float(value)) else number(value)
 
     base = values["base"]
     tuned = values["finetuned"]
+    coverage_delta = paired[
+        (paired["regime"] == "natural")
+        & (paired["score"] == "likelihood")
+        & (paired["metric"] == "deployed_test_coverage")
+    ].iloc[0]
     finding = (
-        f"The base policy {'passed' if base.certified else 'failed'} independent "
-        f"certification and deployed at {percent(base.test_coverage)} test coverage; "
-        f"the tuned policy {'passed' if tuned.certified else 'failed'} and deployed "
-        f"at {percent(tuned.test_coverage)} coverage."
+        f"The base policy's conditional check "
+        f"{'met' if base.certified else 'did not meet'} the numerical CP gate and would "
+        f"answer at {percent(base.test_coverage)} test coverage; the tuned policy's "
+        f"conditional check {'met' if tuned.certified else 'did not meet'} the gate and "
+        f"would answer at {percent(tuned.test_coverage)} coverage."
     )
 
     lines = [
@@ -709,10 +719,10 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
         f"\\renewcommand{{\\TunedCertErrorsAccepted}}{{{int(tuned.certification_errors)}/{int(tuned.certification_accepted)}}}",
         f"\\renewcommand{{\\BaseCertCoverage}}{{{percent(base.certification_coverage)}}}",
         f"\\renewcommand{{\\TunedCertCoverage}}{{{percent(tuned.certification_coverage)}}}",
-        f"\\renewcommand{{\\BaseCertUpper}}{{{percent(base.certification_upper_bound)}}}",
-        f"\\renewcommand{{\\TunedCertUpper}}{{{percent(tuned.certification_upper_bound)}}}",
-        f"\\renewcommand{{\\BaseCertDecision}}{{{'Pass' if base.certified else 'Fail'}}}",
-        f"\\renewcommand{{\\TunedCertDecision}}{{{'Pass' if tuned.certified else 'Fail'}}}",
+        f"\\renewcommand{{\\BaseCertUpper}}{{{percent(base.certification_upper_bound, 2)}}}",
+        f"\\renewcommand{{\\TunedCertUpper}}{{{percent(tuned.certification_upper_bound, 2)}}}",
+        f"\\renewcommand{{\\BaseCertDecision}}{{{'Pass*' if base.certified else 'Fail'}}}",
+        f"\\renewcommand{{\\TunedCertDecision}}{{{'Pass*' if tuned.certified else 'Fail'}}}",
         f"\\renewcommand{{\\BaseTestCoverage}}{{{percent(base.test_coverage)}}}",
         f"\\renewcommand{{\\TunedTestCoverage}}{{{percent(tuned.test_coverage)}}}",
         f"\\renewcommand{{\\BaseTestErrorsAccepted}}{{{int(base.test_errors)}/{int(base.test_accepted)}}}",
@@ -726,8 +736,13 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
         f"\\renewcommand{{\\VQADelta}}{{{percent(accuracy_delta['finetuned_minus_base'])}}}",
         f"\\renewcommand{{\\VQADeltaLow}}{{{percent(accuracy_delta['ci_2.5%'])}}}",
         f"\\renewcommand{{\\VQADeltaHigh}}{{{percent(accuracy_delta['ci_97.5%'])}}}",
+        f"\\renewcommand{{\\CoverageDelta}}{{{percent(coverage_delta['finetuned_minus_base'])}}}",
+        f"\\renewcommand{{\\CoverageDeltaLow}}{{{percent(coverage_delta['ci_2.5%'])}}}",
+        f"\\renewcommand{{\\CoverageDeltaHigh}}{{{percent(coverage_delta['ci_97.5%'])}}}",
         f"\\renewcommand{{\\BaseAURC}}{{{number(base.aurc)}}}",
         f"\\renewcommand{{\\TunedAURC}}{{{number(tuned.aurc)}}}",
+        f"\\renewcommand{{\\BaseSubstantiveRate}}{{{percent(base.substantive_prediction_rate)}}}",
+        f"\\renewcommand{{\\TunedSubstantiveRate}}{{{percent(tuned.substantive_prediction_rate)}}}",
         f"\\renewcommand{{\\PrimaryFinding}}{{{finding}}}",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

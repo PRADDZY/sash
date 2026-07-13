@@ -57,8 +57,13 @@
 \newcommand{\VQADelta}{\ph{fine-tuned minus base VQA}}
 \newcommand{\VQADeltaLow}{\ph{VQA difference lower bound}}
 \newcommand{\VQADeltaHigh}{\ph{VQA difference upper bound}}
+\newcommand{\CoverageDelta}{\ph{audit-policy coverage difference}}
+\newcommand{\CoverageDeltaLow}{\ph{coverage difference lower bound}}
+\newcommand{\CoverageDeltaHigh}{\ph{coverage difference upper bound}}
 \newcommand{\BaseAURC}{\ph{base AURC}}
 \newcommand{\TunedAURC}{\ph{tuned AURC}}
+\newcommand{\BaseSubstantiveRate}{\ph{base substantive-answer rate}}
+\newcommand{\TunedSubstantiveRate}{\ph{tuned substantive-answer rate}}
 \newcommand{\PrimaryFinding}{\ph{one-sentence primary result after certification and test}}
 \IfFileExists{../artifacts/analysis/paper_results.tex}{%
   \input{../artifacts/analysis/paper_results.tex}%
@@ -92,8 +97,9 @@ once on certification using a one-sided Clopper--Pearson upper bound at
 $\alpha=\TargetRisk$ and Bonferroni-adjusted
 $\delta=\PrimaryFailureProb$ per policy, controlling the probability of any false
 certification in the two-policy family at most \FamilyFailureProb.  Thresholds
-are then frozen for test evaluation.
-\PrimaryFinding.  This audit concerns selective factual reliability on one
+are then frozen for test evaluation.  This control is conditional on i.i.d.
+sampling and both checkpoints being independent of the certification labels.
+\PrimaryFinding{}  This audit concerns selective factual reliability on one
 assistive-VQA distribution; it does not establish jailbreak safety, fairness,
 privacy, robustness to arbitrary shift, or user benefit.
 \end{abstract}
@@ -273,10 +279,10 @@ a policy is safe after it passes.  Certification is queried once per frozen prim
 we do not inspect alternative thresholds on $C$, retune after failure, or use $C$
 for Platt fitting.
 
-The tuned checkpoint's certificate is interpretable as a prospective guarantee only
-conditional on its training and selection having excluded these evaluation labels.
-Because its public provenance does not establish that condition, we label its bound
-conditional/descriptive unless independent training records confirm no overlap.
+No complete pretraining-data audit is available for either checkpoint, so label
+independence is an explicit condition for both.  The concern is especially acute for
+the tuned checkpoint because its public provenance does not establish exclusion of
+VizWiz validation labels.
 
 After this decision, $\hat\tau$ is applied unchanged to $T$.  We retain its candidate
 coverage, selective risk, and accepted/error counts whether certification passes or
@@ -322,7 +328,9 @@ at $\delta=\ExploratoryFailureProb$.
 \caption{Primary audit populated from the frozen analysis artifact.  ``CP upper''
 is the one-sided certification bound at
 $\delta=\PrimaryFailureProb$ in
-Eq.~\ref{eq:cp}; test risk is descriptive for the already frozen policy.}
+Eq.~\ref{eq:cp}; decisions use unrounded bounds and test risk is descriptive for the
+already frozen policy.  A pass is marked $*$ because it is conditional on no
+evaluation-label overlap.}
 \label{tab:primary}
 \small
 \resizebox{\textwidth}{!}{%
@@ -343,6 +351,9 @@ Table~\ref{tab:primary} records the only confirmatory certification checks.
 \PrimaryFinding{}  The base certification and deployed-test counts are
 \BaseCertErrorsAccepted{} and \BaseTestErrorsAccepted{} errors/accepted; the tuned
 counts are \TunedCertErrorsAccepted{} and \TunedTestErrorsAccepted{}.
+Conditional on the frozen certification outcomes, the paired difference in audit-policy
+test coverage (tuned minus base) is \CoverageDelta{} with a 95\% percentile-bootstrap
+interval [\CoverageDeltaLow{}, \CoverageDeltaHigh{}].
 Fine-tuning is described as improving selective reliability only if the frozen
 fine-tuned policy provides more useful coverage at the target risk without relying
 on a failed or post-hoc certificate.  Otherwise, the result is reported as null,
@@ -354,13 +365,16 @@ mixed, or adverse rather than rescued with another cutoff.
     \includegraphics[width=0.72\linewidth]{../artifacts/analysis/figures/risk_coverage_natural.pdf}%
   }{\placeholderfigure{1.55in}{risk--coverage curves with frozen operating points}}
   \caption{Test risk--coverage curves for the primary score.  Curves are
-  descriptive and include only substantive answers; filled markers denote deployed
-  operating points that passed independent certification.}
+  descriptive and include only substantive answers; filled markers denote audit
+  operating points that met the numerical certification gate.}
   \label{fig:riskcoverage}
 \end{figure}
 
-Figure~\ref{fig:riskcoverage} gives normalized AURC values of \BaseAURC{} for the
-base pipeline and \TunedAURC{} for the tuned pipeline (lower is better).  The
+Figure~\ref{fig:riskcoverage} gives eligible-only normalized partial-AURC values of
+\BaseAURC{} for the base pipeline and \TunedAURC{} for the tuned pipeline (lower is
+better).  Each is normalized by its own maximum substantive-answer coverage
+(\BaseSubstantiveRate{} and \TunedSubstantiveRate{}), so AURC is a descriptive ranking
+diagnostic rather than an overall reliability comparison.  The
 unrestricted paired VQA-score difference is \VQADelta{} with a 2,000-resample
 percentile paired-bootstrap interval [\VQADeltaLow{}, \VQADeltaHigh{}] at seed
 \SplitSeed{}; this secondary comparison
@@ -369,9 +383,9 @@ separates average task utility from selective reliability.
 \subsection{Calibration and shift}
 
 Platt-scaled ECE and Brier scores are \BaseECE{} and \BaseBrier{} for the base
-pipeline and \TunedECE{} and \TunedBrier{} for the fine-tuned pipeline.  Reliability
-diagrams show \ph{where calibration changes across confidence bins}.  These values
-describe probability quality and do not replace the exact certification check.
+pipeline and \TunedECE{} and \TunedBrier{} for the fine-tuned pipeline.  The archived
+reliability diagrams and these scalar summaries are descriptive probability-quality
+checks; they do not replace the exact certification decision.
 
 On the predeclared corrupted-image subset, \ph{report coverage, entirely-wrong
 risk, and corruption-stratified counts for each frozen pipeline}.  Because the
@@ -381,9 +395,9 @@ transferred distribution-free guarantee.
 
 \subsection{Grounding and acquisition}
 
-The blank-image contrast \ph{improves/does not improve risk ranking, with metric and
-uncertainty}.  Clear-image access changes the ranking of \ph{fraction} of corrupted
-cases; because the answer itself is frozen, it cannot change an entirely wrong
+The blank-image contrast \ph{improves/does not improve risk ranking descriptively}.
+Clear-image access increases the frozen-answer acquisition score on \ph{fraction} of
+corrupted cases; because the answer itself is frozen, it cannot change an entirely wrong
 response into a correct one in this experiment.  These diagnostics motivate a
 future acquire-and-regenerate policy only if the effect appears consistently across
 both pipelines and corruption types; they remain exploratory.
@@ -468,9 +482,9 @@ reproduced from the archived prediction and analysis artifacts.
 
 We asked whether domain fine-tuning improves the selective reliability of an
 assistive VQA pipeline under a prespecified entirely-wrong risk target.
-\PrimaryFinding.  The appropriate conclusion is \ph{improved, unchanged, mixed, or
-degraded selective reliability}, bounded to the frozen VizWiz evaluation and the
-fit/certify/test protocol described above.  Broader safety and user-impact claims
+\PrimaryFinding{}  This outcome compares two public pipelines and does not identify
+fine-tuning as its cause.  It is bounded to the frozen VizWiz evaluation and the
+fit/certify/test protocol described above; broader safety and user-impact claims
 require separate evidence.
 
 \bibliographystyle{plainnat}
