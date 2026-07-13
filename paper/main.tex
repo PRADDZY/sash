@@ -74,7 +74,7 @@
 }
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 
-\title{Does Domain Fine-Tuning Improve Selective Reliability?\\
+\title{Does a Public VizWiz Checkpoint Improve Selective Reliability?\\
 \large A Risk-Controlled Audit of Assistive VQA}
 \author{Pratik Daithankar}
 \date{}
@@ -135,8 +135,8 @@ Selective VQA makes this trade-off explicit through risk and coverage
         separate from the primary certificate.
 \end{itemize}
 
-The central question is not whether fine-tuning improves a leaderboard score, but
-whether it improves the attainable coverage of answers that survive a fixed,
+The central question is not whether a public tuned checkpoint improves a leaderboard
+score, but whether it improves the attainable coverage of answers that survive a fixed,
 auditable risk gate.
 
 \section{Related Work}
@@ -404,14 +404,18 @@ both pipelines and corruption types; they remain exploratory.
 
 \section{Failure Analysis}
 
-We manually review a frozen sample of high-confidence substantive-answer test errors and assign one
-primary category: unrecognizable image, target outside the frame, OCR failure,
-question ambiguity, unsupported object/detail, or reference disagreement.  Review
-is conducted after primary metrics are frozen and cannot change correctness labels.
+We manually review the 15 highest-confidence substantive-answer test errors in each
+model-by-regime stratum, ordered by score then case ID, and assign one primary category:
+unrecognizable image, target outside the frame, OCR failure, question ambiguity,
+unsupported object/detail, or reference disagreement.  Review is conducted after
+primary metrics are frozen and cannot change correctness labels.  For publication we
+take the first privacy-safe unique source from each of the four strata; uncertain or
+identifying images are excluded without replacement by reviewer preference.
 
 \begin{table}[t]
 \centering
-\caption{Qualitative cases selected by a rule written before inspecting examples.}
+\caption{Four stratum-balanced high-confidence errors selected by a rule frozen before
+inspecting examples.}
 \label{tab:examples}
 \small
 \setlength{\tabcolsep}{3pt}
@@ -419,10 +423,10 @@ is conducted after primary metrics are frozen and cannot change correctness labe
 \toprule
 Case & Question / image condition & Base / fine-tuned output & Why the gate succeeded or failed & Appropriate action \\
 \midrule
-\phcell{ID 1} & \phcell{correct case} & \phcell{outputs / scores} & \phcell{analysis} & Answer \\
-\phcell{ID 2} & \phcell{abstention case} & \phcell{outputs / scores} & \phcell{analysis} & Retake or reframe \\
-\phcell{ID 3} & \phcell{wrong case} & \phcell{outputs / scores} & \phcell{analysis} & Abstain / escalate \\
-\phcell{ID 4} & \phcell{over-abstention} & \phcell{outputs / scores} & \phcell{analysis} & Clarify or answer \\
+Base/natural & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
+Tuned/natural & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
+Base/shift & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
+Tuned/shift & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -480,8 +484,8 @@ reproduced from the archived prediction and analysis artifacts.
 
 \section{Conclusion}
 
-We asked whether domain fine-tuning improves the selective reliability of an
-assistive VQA pipeline under a prespecified entirely-wrong risk target.
+We asked whether a public checkpoint presented as domain-tuned exhibits better
+selective reliability than its base family under a prespecified entirely-wrong risk target.
 \PrimaryFinding{}  This outcome compares two public pipelines and does not identify
 fine-tuning as its cause.  It is bounded to the frozen VizWiz evaluation and the
 fit/certify/test protocol described above; broader safety and user-impact claims

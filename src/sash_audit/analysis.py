@@ -138,6 +138,8 @@ def validate_prediction_frame(frame: pd.DataFrame, *, strict_counts: bool = Fals
 
     if set(frame["model_key"]) != {"base", "finetuned"}:
         raise ValueError("predictions must contain exactly base and finetuned models")
+    if set(frame["regime"]) != {"natural", "shift"}:
+        raise ValueError("predictions must contain exactly natural and shift regimes")
     if not set(frame["evaluation_split"]).issubset({"fit", "certification", "test"}):
         raise ValueError("unexpected evaluation split")
     for regime in ("natural", "shift"):
@@ -367,6 +369,11 @@ def _paired_rows(
                 "entirely_wrong_rate",
                 (finetuned["vqa_score"] == 0).astype(float),
                 (base["vqa_score"] == 0).astype(float),
+            ),
+            (
+                "substantive_prediction_rate",
+                _substantive(finetuned).astype(float),
+                _substantive(base).astype(float),
             ),
         ):
             difference, lower, upper = bootstrap_mean_difference(
@@ -772,12 +779,10 @@ def write_analysis(
         & (frame["vqa_score"] == 0)
         & _substantive(frame)
     ].copy()
-    failures["priority"] = failures.groupby(["model_key", "regime"])["mean_logprob"].rank(
-        ascending=False, method="first"
-    )
-    audit = failures.sort_values(["priority", "model_key", "case_id"]).groupby(
-        ["model_key", "regime"], as_index=False
-    ).head(15)
+    audit = failures.sort_values(
+        ["model_key", "regime", "mean_logprob", "case_id"],
+        ascending=[True, True, False, True],
+    ).groupby(["model_key", "regime"], as_index=False).head(15)
     columns = [
         "case_id",
         "row_index",
@@ -795,6 +800,7 @@ def write_analysis(
     audit = audit[columns].copy()
     audit["failure_category"] = ""
     audit["recommended_action"] = ""
+    audit["candidate_gate_behavior"] = ""
     audit["privacy_screening"] = ""
     audit["review_notes"] = ""
     audit.to_csv(output_dir / "failure_audit.csv", index=False)
