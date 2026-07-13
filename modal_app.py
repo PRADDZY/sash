@@ -254,6 +254,7 @@ def analyze() -> dict[str, str | int]:
     for image_path in image_paths:
         source = Path(image_path)
         shutil.copy2(source, image_dir / source.name)
+    bundle = shutil.make_archive(str(ARTIFACT_VOLUME_PATH / "analysis_bundle"), "zip", output_dir)
     artifact_volume.commit()
     return {
         "rows": len(frame),
@@ -261,6 +262,7 @@ def analyze() -> dict[str, str | int]:
         "paired_differences": str(output_dir / "paired_differences.csv"),
         "paper_results": str(output_dir / "paper_results.tex"),
         "failure_images": str(image_dir),
+        "bundle": bundle,
     }
 
 

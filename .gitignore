@@ -11,6 +11,10 @@ artifacts/cache/
 artifacts/manifest.jsonl
 artifacts/pilot/
 artifacts/predictions/
+artifacts/analysis_bundle.zip
+artifacts/analysis_local/
+artifacts/analysis/failure_audit.csv
+artifacts/analysis/failure_images/
 paper/*.aux
 paper/*.bbl
 paper/*.bcf

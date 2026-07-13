@@ -9,13 +9,9 @@
 \usepackage{microtype}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{array}
-\usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 
-\definecolor{placeholder}{RGB}{150,25,100}
-\newcommand{\ph}[1]{\textcolor{placeholder}{\textbf{[PLACEHOLDER: #1]}}}
-\newcommand{\phcell}[1]{\textcolor{placeholder}{\textbf{[#1 TBD]}}}
 \newcommand{\TargetRisk}{0.10}
 \newcommand{\FitRiskHeuristic}{0.05}
 \newcommand{\FamilyFailureProb}{0.05}
@@ -28,50 +24,92 @@
 \newcommand{\BaseCheckpoint}{\texttt{Qwen3-VL-8B}}
 \newcommand{\TunedCheckpoint}{\texttt{Qwen-VizWiz-8B}}
 
-% Populate these macros only from frozen analysis artifacts.
-\newcommand{\FitN}{\ph{fit-set N}}
-\newcommand{\CertN}{\ph{certification-set N}}
-\newcommand{\TestN}{\ph{test-set N}}
-\newcommand{\BaseVQA}{\ph{base mean VQA score}}
-\newcommand{\TunedVQA}{\ph{fine-tuned mean VQA score}}
-\newcommand{\BaseThreshold}{\ph{base threshold}}
-\newcommand{\TunedThreshold}{\ph{fine-tuned threshold}}
-\newcommand{\BaseCertErrorsAccepted}{\ph{base certification errors/accepted}}
-\newcommand{\TunedCertErrorsAccepted}{\ph{tuned certification errors/accepted}}
-\newcommand{\BaseCertCoverage}{\ph{base certification coverage}}
-\newcommand{\TunedCertCoverage}{\ph{tuned certification coverage}}
-\newcommand{\BaseCertUpper}{\ph{base certification upper bound}}
-\newcommand{\TunedCertUpper}{\ph{fine-tuned certification upper bound}}
-\newcommand{\BaseCertDecision}{\ph{base pass/fail}}
-\newcommand{\TunedCertDecision}{\ph{fine-tuned pass/fail}}
-\newcommand{\BaseTestCoverage}{\ph{base test coverage}}
-\newcommand{\TunedTestCoverage}{\ph{fine-tuned test coverage}}
-\newcommand{\BaseTestErrorsAccepted}{\ph{base test errors/accepted}}
-\newcommand{\TunedTestErrorsAccepted}{\ph{tuned test errors/accepted}}
-\newcommand{\BaseTestRisk}{\ph{base test risk}}
-\newcommand{\TunedTestRisk}{\ph{fine-tuned test risk}}
-\newcommand{\BaseECE}{\ph{base ECE}}
-\newcommand{\TunedECE}{\ph{fine-tuned ECE}}
-\newcommand{\BaseBrier}{\ph{base Brier score}}
-\newcommand{\TunedBrier}{\ph{fine-tuned Brier score}}
-\newcommand{\VQADelta}{\ph{fine-tuned minus base VQA}}
-\newcommand{\VQADeltaLow}{\ph{VQA difference lower bound}}
-\newcommand{\VQADeltaHigh}{\ph{VQA difference upper bound}}
-\newcommand{\CoverageDelta}{\ph{audit-policy coverage difference}}
-\newcommand{\CoverageDeltaLow}{\ph{coverage difference lower bound}}
-\newcommand{\CoverageDeltaHigh}{\ph{coverage difference upper bound}}
-\newcommand{\BaseAURC}{\ph{base AURC}}
-\newcommand{\TunedAURC}{\ph{tuned AURC}}
-\newcommand{\BaseSubstantiveRate}{\ph{base substantive-answer rate}}
-\newcommand{\TunedSubstantiveRate}{\ph{tuned substantive-answer rate}}
-\newcommand{\PrimaryFinding}{\ph{one-sentence primary result after certification and test}}
+% Defined empty so the generated artifact can populate them with \renewcommand.
+\newcommand{\FitN}{}
+\newcommand{\CertN}{}
+\newcommand{\TestN}{}
+\newcommand{\BaseVQA}{}
+\newcommand{\TunedVQA}{}
+\newcommand{\BaseWrongRate}{}
+\newcommand{\TunedWrongRate}{}
+\newcommand{\BaseThreshold}{}
+\newcommand{\TunedThreshold}{}
+\newcommand{\BaseCertErrorsAccepted}{}
+\newcommand{\TunedCertErrorsAccepted}{}
+\newcommand{\BaseCertCoverage}{}
+\newcommand{\TunedCertCoverage}{}
+\newcommand{\BaseCertUpper}{}
+\newcommand{\TunedCertUpper}{}
+\newcommand{\BaseCertDecision}{}
+\newcommand{\TunedCertDecision}{}
+\newcommand{\BaseTestCoverage}{}
+\newcommand{\TunedTestCoverage}{}
+\newcommand{\BaseTestErrorsAccepted}{}
+\newcommand{\TunedTestErrorsAccepted}{}
+\newcommand{\BaseTestRisk}{}
+\newcommand{\TunedTestRisk}{}
+\newcommand{\BaseCandidateErrorsAccepted}{}
+\newcommand{\TunedCandidateErrorsAccepted}{}
+\newcommand{\BaseCandidateCoverage}{}
+\newcommand{\TunedCandidateCoverage}{}
+\newcommand{\BaseCandidateRisk}{}
+\newcommand{\TunedCandidateRisk}{}
+\newcommand{\BaseECE}{}
+\newcommand{\TunedECE}{}
+\newcommand{\BaseBrier}{}
+\newcommand{\TunedBrier}{}
+\newcommand{\VQADelta}{}
+\newcommand{\VQADeltaLow}{}
+\newcommand{\VQADeltaHigh}{}
+\newcommand{\WrongDelta}{}
+\newcommand{\WrongDeltaLow}{}
+\newcommand{\WrongDeltaHigh}{}
+\newcommand{\SubstantiveDelta}{}
+\newcommand{\SubstantiveDeltaLow}{}
+\newcommand{\SubstantiveDeltaHigh}{}
+\newcommand{\CoverageDelta}{}
+\newcommand{\CoverageDeltaLow}{}
+\newcommand{\CoverageDeltaHigh}{}
+\newcommand{\BaseAURC}{}
+\newcommand{\TunedAURC}{}
+\newcommand{\BaseAUROC}{}
+\newcommand{\TunedAUROC}{}
+\newcommand{\BaseVisualAURC}{}
+\newcommand{\TunedVisualAURC}{}
+\newcommand{\BaseVisualAUROC}{}
+\newcommand{\TunedVisualAUROC}{}
+\newcommand{\BaseSubstantiveRate}{}
+\newcommand{\TunedSubstantiveRate}{}
+\newcommand{\ShiftN}{}
+\newcommand{\BaseShiftVQA}{}
+\newcommand{\TunedShiftVQA}{}
+\newcommand{\BaseShiftWrongRate}{}
+\newcommand{\TunedShiftWrongRate}{}
+\newcommand{\BaseShiftSubstantiveRate}{}
+\newcommand{\TunedShiftSubstantiveRate}{}
+\newcommand{\ShiftVQADelta}{}
+\newcommand{\ShiftVQADeltaLow}{}
+\newcommand{\ShiftVQADeltaHigh}{}
+\newcommand{\ShiftWrongDelta}{}
+\newcommand{\ShiftWrongDeltaLow}{}
+\newcommand{\ShiftWrongDeltaHigh}{}
+\newcommand{\BaseShiftCertErrorsAccepted}{}
+\newcommand{\TunedShiftCertErrorsAccepted}{}
+\newcommand{\BaseShiftCertUpper}{}
+\newcommand{\TunedShiftCertUpper}{}
+\newcommand{\BaseShiftDecision}{}
+\newcommand{\TunedShiftDecision}{}
+\newcommand{\BaseShiftTestErrorsAccepted}{}
+\newcommand{\TunedShiftTestErrorsAccepted}{}
+\newcommand{\BaseShiftTestCoverage}{}
+\newcommand{\TunedShiftTestCoverage}{}
+\newcommand{\BaseShiftTestRisk}{}
+\newcommand{\TunedShiftTestRisk}{}
+\newcommand{\TunedShiftCandidateErrorsAccepted}{}
+\newcommand{\PrimaryFinding}{}
 \IfFileExists{../artifacts/analysis/paper_results.tex}{%
   \input{../artifacts/analysis/paper_results.tex}%
-}{}
-
-\newcommand{\placeholderfigure}[2]{%
-  \fbox{\parbox[c][#1][c]{0.94\linewidth}{\centering\ph{#2}}}%
-}
+}{\PackageError{sash-paper}{Missing generated analysis artifact}{Run sash-audit first.}}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 \title{Does a Public VizWiz Checkpoint Improve Selective Reliability?\\
@@ -336,10 +374,10 @@ evaluation-label overlap.}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lccccccccc}
 \toprule
-Pipeline & Mean VQA & $\hat\tau$ & Cert. $e/n$ & Cert. cov. & CP upper & Pass? & Test cov. & Test risk & ECE / Brier \\
+Pipeline & Test mean VQA & $\hat\tau$ & Cert. $e/n$ & Cert. cov. & CP upper & Pass? & Test cov. & Test risk & ECE / Brier \\
 \midrule
 Base & \BaseVQA & \BaseThreshold & \BaseCertErrorsAccepted & \BaseCertCoverage & \BaseCertUpper & \BaseCertDecision & \BaseTestCoverage & \BaseTestRisk & \BaseECE{} / \BaseBrier \\
-Fine-tuned & \TunedVQA & \TunedThreshold & \TunedCertErrorsAccepted & \TunedCertCoverage & \TunedCertUpper & \TunedCertDecision & \TunedTestCoverage & \TunedTestRisk & \TunedECE{} / \TunedBrier \\
+Public tuned & \TunedVQA & \TunedThreshold & \TunedCertErrorsAccepted & \TunedCertCoverage & \TunedCertUpper & \TunedCertDecision & \TunedTestCoverage & \TunedTestRisk & \TunedECE{} / \TunedBrier \\
 \bottomrule
 \end{tabular}
 }
@@ -351,19 +389,23 @@ Table~\ref{tab:primary} records the only confirmatory certification checks.
 \PrimaryFinding{}  The base certification and deployed-test counts are
 \BaseCertErrorsAccepted{} and \BaseTestErrorsAccepted{} errors/accepted; the tuned
 counts are \TunedCertErrorsAccepted{} and \TunedTestErrorsAccepted{}.
+The failed frozen thresholds would have accepted \BaseCandidateErrorsAccepted{}
+and \TunedCandidateErrorsAccepted{} errors/answers on test, respectively
+(\BaseCandidateCoverage{} coverage at \BaseCandidateRisk{} empirical risk and
+\TunedCandidateCoverage{} at \TunedCandidateRisk{}).  These candidate outcomes are
+diagnostics, not certificates; in particular, zero errors among 35 tuned answers
+cannot repair a bound learned from only 11 accepted certification examples.
 Conditional on the frozen certification outcomes, the paired difference in audit-policy
 test coverage (tuned minus base) is \CoverageDelta{} with a 95\% percentile-bootstrap
 interval [\CoverageDeltaLow{}, \CoverageDeltaHigh{}].
-Fine-tuning is described as improving selective reliability only if the frozen
-fine-tuned policy provides more useful coverage at the target risk without relying
-on a failed or post-hoc certificate.  Otherwise, the result is reported as null,
-mixed, or adverse rather than rescued with another cutoff.
+This degenerate interval is a mechanical consequence of both policies failing; it
+does not show equivalence.  The tuned checkpoint is described as improving selective
+reliability only if its frozen policy provides more useful coverage at the target
+risk without relying on a failed or post-hoc certificate.
 
 \begin{figure}[t]
   \centering
-  \IfFileExists{../artifacts/analysis/figures/risk_coverage_natural.pdf}{%
-    \includegraphics[width=0.72\linewidth]{../artifacts/analysis/figures/risk_coverage_natural.pdf}%
-  }{\placeholderfigure{1.55in}{risk--coverage curves with frozen operating points}}
+  \includegraphics[width=0.72\linewidth]{../artifacts/analysis/figures/risk_coverage_natural.pdf}
   \caption{Test risk--coverage curves for the primary score.  Curves are
   descriptive and include only substantive answers; filled markers denote audit
   operating points that met the numerical certification gate.}
@@ -377,30 +419,53 @@ better).  Each is normalized by its own maximum substantive-answer coverage
 diagnostic rather than an overall reliability comparison.  The
 unrestricted paired VQA-score difference is \VQADelta{} with a 2,000-resample
 percentile paired-bootstrap interval [\VQADeltaLow{}, \VQADeltaHigh{}] at seed
-\SplitSeed{}; this secondary comparison
-separates average task utility from selective reliability.
+\SplitSeed{}.  The entirely-wrong rate changes from \BaseWrongRate{} to
+\TunedWrongRate{} (paired difference \WrongDelta{}, interval [\WrongDeltaLow{},
+\WrongDeltaHigh{}]), while the substantive-answer rate changes by
+\SubstantiveDelta{} [\SubstantiveDeltaLow{}, \SubstantiveDeltaHigh{}].  Thus the
+public tuned checkpoint has better average task utility and fewer completely wrong
+outputs, but it also declines to answer much more often; neither fact supplies the
+missing selective-reliability certificate.
 
 \subsection{Calibration and shift}
 
 Platt-scaled ECE and Brier scores are \BaseECE{} and \BaseBrier{} for the base
-pipeline and \TunedECE{} and \TunedBrier{} for the fine-tuned pipeline.  The archived
+pipeline and \TunedECE{} and \TunedBrier{} for the public tuned pipeline.  The archived
 reliability diagrams and these scalar summaries are descriptive probability-quality
-checks; they do not replace the exact certification decision.
+checks; they do not replace the exact certification decision.  They are also mixed:
+ECE and correctness AUROC (\BaseAUROC{} versus \TunedAUROC{}) favor the base
+pipeline, whereas Brier score and normalized partial AURC favor the tuned pipeline.
 
-On the predeclared corrupted-image subset, \ph{report coverage, entirely-wrong
-risk, and corruption-stratified counts for each frozen pipeline}.  Because the
-primary certificate assumes i.i.d. question sampling from its certification/target
-distribution, the corruption study is evidence about failure behavior, not a
-transferred distribution-free guarantee.
+On the balanced answerable corruption test ($n=\ShiftN$), the separately fitted base
+likelihood policy passes its exploratory marginal check with
+\BaseShiftCertErrorsAccepted{} errors/answers and a \BaseShiftCertUpper{} upper
+bound; it then answers \BaseShiftTestErrorsAccepted{} at
+\BaseShiftTestCoverage{} coverage and \BaseShiftTestRisk{} observed risk.  The tuned
+policy's \TunedShiftCertErrorsAccepted{} check has a \TunedShiftCertUpper{} upper
+bound and fails, so its prescribed coverage is \TunedShiftTestCoverage{} (the failed
+candidate threshold is \TunedShiftCandidateErrorsAccepted{} on test).  Aggregate VQA
+is \BaseShiftVQA{} versus \TunedShiftVQA{} (paired difference \ShiftVQADelta{},
+interval [\ShiftVQADeltaLow{}, \ShiftVQADeltaHigh{}]); entirely-wrong rates are
+\BaseShiftWrongRate{} and \TunedShiftWrongRate{} (difference \ShiftWrongDelta{},
+interval [\ShiftWrongDeltaLow{}, \ShiftWrongDeltaHigh{}]).  The tuned model's
+substantive-answer rate is also lower (\TunedShiftSubstantiveRate{} versus
+\BaseShiftSubstantiveRate{}).  Low resolution has the highest entirely-wrong rate
+for both pipelines in the archived corruption-stratified table.  This study is
+exploratory, marginal, answerable-only evidence about failure behavior, not a
+transferred or family-wise robustness guarantee.
 
 \subsection{Grounding and acquisition}
 
-The blank-image contrast \ph{improves/does not improve risk ranking descriptively}.
-Clear-image access increases the frozen-answer acquisition score on \ph{fraction} of
-corrupted cases; because the answer itself is frozen, it cannot change an entirely wrong
-response into a correct one in this experiment.  These diagnostics motivate a
-future acquire-and-regenerate policy only if the effect appears consistently across
-both pipelines and corruption types; they remain exploratory.
+The mid-gray-image contrast worsens natural-data correctness ranking: base AUROC
+falls from \BaseAUROC{} to \BaseVisualAUROC{} and normalized partial AURC rises from
+\BaseAURC{} to \BaseVisualAURC{}; the corresponding tuned values move from
+\TunedAUROC{} to \TunedVisualAUROC{} and \TunedAURC{} to \TunedVisualAURC{}.
+On corrupted images, clear-image acquisition produces the same certification and
+accepted/error counts as the visual-delta score for each model, with only small and
+inconsistent ranking changes.  Because the answer is frozen before acquisition, it
+cannot turn an entirely wrong response into a correct one here.  These diagnostics
+do not support a grounding or acquisition benefit; an acquire-and-regenerate policy
+requires a separate experiment.
 
 \section{Failure Analysis}
 
@@ -421,15 +486,37 @@ inspecting examples.}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{P{0.11\textwidth}P{0.21\textwidth}P{0.20\textwidth}P{0.18\textwidth}P{0.19\textwidth}}
 \toprule
-Case & Question / image condition & Base / fine-tuned output & Why the gate succeeded or failed & Appropriate action \\
+Case & Question / image condition & Output / official score & Candidate selector behavior & Appropriate action \\
 \midrule
-Base/natural & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
-Tuned/natural & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
-Base/shift & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
-Tuned/shift & \phcell{case and condition} & \phcell{outputs / scores} & \phcell{analysis} & \phcell{action} \\
+Base / 1064 & Login screen or still installing? Natural image. &
+``login screen''; VQA $=0$; $\ell=-6.96\!\times\!10^{-6}$. &
+Above $-0.0015$: miss. Image supports a login/welcome reading. &
+Adjudicate or expand references. \\
+Tuned / 2670 & All-purpose or self-rising flour? Type is outside the frame. &
+``self rising''; VQA $=0$; $\ell=-0.0308$. &
+Below $-0.0219$: catch. The answer is unsupported. &
+Request a front-label image or abstain. \\
+Base / 3106-L & Book-bag color under low light. &
+``blue''; VQA $=0$; $\ell=-2.18\!\times\!10^{-5}$. &
+Above $-0.0126$: miss. References say blue-grey. &
+Adjudicate acceptable color granularity. \\
+Tuned / 3456-R & Tin contents at low resolution. &
+``baked beans and sausages''; VQA $=0$; $\ell=-0.0811$. &
+Below $-0.0277$: catch. References omit only ``and.'' &
+Normalize conjunctions or adjudicate. \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+Across all 60 reviewed cases, 39 are reference disagreements, nine OCR failures,
+five question ambiguities, three unsupported-detail errors, two unrecognizable
+images, and two targets outside the frame.  The base candidate selector misses all
+15 natural cases and 10/15 shifted cases; the tuned candidate selector catches all
+30 reviewed cases.  These are deterministic top-score audit counts, not prevalence
+estimates.  All four displayed rows pass the prespecified privacy screen; the full
+labels and exclusions are archived in \texttt{failure\_review.csv}.  For natural
+data, ``candidate'' remains counterfactual because the failed certification gate
+forces the deployed policy to abstain on every case.
 
 The analysis should distinguish a confidence-ranking failure from a perception
 failure: a correct abstention on missing evidence is desirable, whereas an answer
@@ -491,6 +578,8 @@ fine-tuning as its cause.  It is bounded to the frozen VizWiz evaluation and the
 fit/certify/test protocol described above; broader safety and user-impact claims
 require separate evidence.
 
+\renewcommand{\bibfont}{\footnotesize}
+\setlength{\bibsep}{1pt}
 \bibliographystyle{plainnat}
 \bibliography{references}
 

@@ -683,6 +683,18 @@ def write_reliability_figures(frame: pd.DataFrame, output_dir: Path) -> list[Pat
 def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path) -> None:
     primary = summary[(summary["regime"] == "natural") & (summary["score"] == "likelihood")]
     values = {row.model_key: row for row in primary.itertuples(index=False)}
+    shift_values = {
+        row.model_key: row
+        for row in summary[
+            (summary["regime"] == "shift") & (summary["score"] == "likelihood")
+        ].itertuples(index=False)
+    }
+    visual_values = {
+        row.model_key: row
+        for row in summary[
+            (summary["regime"] == "natural") & (summary["score"] == "visual_delta")
+        ].itertuples(index=False)
+    }
     accuracy_delta = paired[
         (paired["regime"] == "natural") & (paired["metric"] == "vqa_accuracy")
     ].iloc[0]
@@ -702,10 +714,27 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
 
     base = values["base"]
     tuned = values["finetuned"]
+    base_shift = shift_values["base"]
+    tuned_shift = shift_values["finetuned"]
+    base_visual = visual_values["base"]
+    tuned_visual = visual_values["finetuned"]
     coverage_delta = paired[
         (paired["regime"] == "natural")
         & (paired["score"] == "likelihood")
         & (paired["metric"] == "deployed_test_coverage")
+    ].iloc[0]
+    wrong_delta = paired[
+        (paired["regime"] == "natural") & (paired["metric"] == "entirely_wrong_rate")
+    ].iloc[0]
+    substantive_delta = paired[
+        (paired["regime"] == "natural")
+        & (paired["metric"] == "substantive_prediction_rate")
+    ].iloc[0]
+    shift_accuracy_delta = paired[
+        (paired["regime"] == "shift") & (paired["metric"] == "vqa_accuracy")
+    ].iloc[0]
+    shift_wrong_delta = paired[
+        (paired["regime"] == "shift") & (paired["metric"] == "entirely_wrong_rate")
     ].iloc[0]
     finding = (
         f"The base policy's conditional check "
@@ -722,6 +751,8 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
         f"\\renewcommand{{\\TestN}}{{{int(base.test_n)}}}",
         f"\\renewcommand{{\\BaseVQA}}{{{percent(base.vqa_accuracy)}}}",
         f"\\renewcommand{{\\TunedVQA}}{{{percent(tuned.vqa_accuracy)}}}",
+        f"\\renewcommand{{\\BaseWrongRate}}{{{percent(base.entirely_wrong_rate)}}}",
+        f"\\renewcommand{{\\TunedWrongRate}}{{{percent(tuned.entirely_wrong_rate)}}}",
         f"\\renewcommand{{\\BaseThreshold}}{{{threshold(base.fit_threshold)}}}",
         f"\\renewcommand{{\\TunedThreshold}}{{{threshold(tuned.fit_threshold)}}}",
         f"\\renewcommand{{\\BaseCertErrorsAccepted}}{{{int(base.certification_errors)}/{int(base.certification_accepted)}}}",
@@ -738,6 +769,12 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
         f"\\renewcommand{{\\TunedTestErrorsAccepted}}{{{int(tuned.test_errors)}/{int(tuned.test_accepted)}}}",
         f"\\renewcommand{{\\BaseTestRisk}}{{{percent(base.test_entirely_wrong_risk)}}}",
         f"\\renewcommand{{\\TunedTestRisk}}{{{percent(tuned.test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\BaseCandidateErrorsAccepted}}{{{int(base.candidate_test_errors)}/{int(base.candidate_test_accepted)}}}",
+        f"\\renewcommand{{\\TunedCandidateErrorsAccepted}}{{{int(tuned.candidate_test_errors)}/{int(tuned.candidate_test_accepted)}}}",
+        f"\\renewcommand{{\\BaseCandidateCoverage}}{{{percent(base.candidate_test_coverage)}}}",
+        f"\\renewcommand{{\\TunedCandidateCoverage}}{{{percent(tuned.candidate_test_coverage)}}}",
+        f"\\renewcommand{{\\BaseCandidateRisk}}{{{percent(base.candidate_test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\TunedCandidateRisk}}{{{percent(tuned.candidate_test_entirely_wrong_risk)}}}",
         f"\\renewcommand{{\\BaseECE}}{{{number(base.correctness_ece_10bin)}}}",
         f"\\renewcommand{{\\TunedECE}}{{{number(tuned.correctness_ece_10bin)}}}",
         f"\\renewcommand{{\\BaseBrier}}{{{number(base.correctness_brier)}}}",
@@ -745,13 +782,57 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
         f"\\renewcommand{{\\VQADelta}}{{{percent(accuracy_delta['finetuned_minus_base'])}}}",
         f"\\renewcommand{{\\VQADeltaLow}}{{{percent(accuracy_delta['ci_2.5%'])}}}",
         f"\\renewcommand{{\\VQADeltaHigh}}{{{percent(accuracy_delta['ci_97.5%'])}}}",
+        f"\\renewcommand{{\\WrongDelta}}{{{percent(wrong_delta['finetuned_minus_base'])}}}",
+        f"\\renewcommand{{\\WrongDeltaLow}}{{{percent(wrong_delta['ci_2.5%'])}}}",
+        f"\\renewcommand{{\\WrongDeltaHigh}}{{{percent(wrong_delta['ci_97.5%'])}}}",
+        f"\\renewcommand{{\\SubstantiveDelta}}{{{percent(substantive_delta['finetuned_minus_base'])}}}",
+        f"\\renewcommand{{\\SubstantiveDeltaLow}}{{{percent(substantive_delta['ci_2.5%'])}}}",
+        f"\\renewcommand{{\\SubstantiveDeltaHigh}}{{{percent(substantive_delta['ci_97.5%'])}}}",
         f"\\renewcommand{{\\CoverageDelta}}{{{percent(coverage_delta['finetuned_minus_base'])}}}",
         f"\\renewcommand{{\\CoverageDeltaLow}}{{{percent(coverage_delta['ci_2.5%'])}}}",
         f"\\renewcommand{{\\CoverageDeltaHigh}}{{{percent(coverage_delta['ci_97.5%'])}}}",
         f"\\renewcommand{{\\BaseAURC}}{{{number(base.aurc)}}}",
         f"\\renewcommand{{\\TunedAURC}}{{{number(tuned.aurc)}}}",
+        f"\\renewcommand{{\\BaseAUROC}}{{{number(base.correctness_auroc)}}}",
+        f"\\renewcommand{{\\TunedAUROC}}{{{number(tuned.correctness_auroc)}}}",
+        f"\\renewcommand{{\\BaseVisualAURC}}{{{number(base_visual.aurc)}}}",
+        f"\\renewcommand{{\\TunedVisualAURC}}{{{number(tuned_visual.aurc)}}}",
+        f"\\renewcommand{{\\BaseVisualAUROC}}{{{number(base_visual.correctness_auroc)}}}",
+        f"\\renewcommand{{\\TunedVisualAUROC}}{{{number(tuned_visual.correctness_auroc)}}}",
         f"\\renewcommand{{\\BaseSubstantiveRate}}{{{percent(base.substantive_prediction_rate)}}}",
         f"\\renewcommand{{\\TunedSubstantiveRate}}{{{percent(tuned.substantive_prediction_rate)}}}",
+        f"\\renewcommand{{\\ShiftN}}{{{int(base_shift.test_n)}}}",
+        f"\\renewcommand{{\\BaseShiftVQA}}{{{percent(base_shift.vqa_accuracy)}}}",
+        f"\\renewcommand{{\\TunedShiftVQA}}{{{percent(tuned_shift.vqa_accuracy)}}}",
+        f"\\renewcommand{{\\BaseShiftWrongRate}}{{{percent(base_shift.entirely_wrong_rate)}}}",
+        f"\\renewcommand{{\\TunedShiftWrongRate}}{{{percent(tuned_shift.entirely_wrong_rate)}}}",
+        f"\\renewcommand{{\\BaseShiftSubstantiveRate}}{{{percent(base_shift.substantive_prediction_rate)}}}",
+        f"\\renewcommand{{\\TunedShiftSubstantiveRate}}{{{percent(tuned_shift.substantive_prediction_rate)}}}",
+        f"\\renewcommand{{\\ShiftVQADelta}}{{{percent(shift_accuracy_delta['finetuned_minus_base'])}}}",
+        f"\\renewcommand{{\\ShiftVQADeltaLow}}{{{percent(shift_accuracy_delta['ci_2.5%'])}}}",
+        f"\\renewcommand{{\\ShiftVQADeltaHigh}}{{{percent(shift_accuracy_delta['ci_97.5%'])}}}",
+        f"\\renewcommand{{\\ShiftWrongDelta}}{{{percent(shift_wrong_delta['finetuned_minus_base'])}}}",
+        f"\\renewcommand{{\\ShiftWrongDeltaLow}}{{{percent(shift_wrong_delta['ci_2.5%'])}}}",
+        f"\\renewcommand{{\\ShiftWrongDeltaHigh}}{{{percent(shift_wrong_delta['ci_97.5%'])}}}",
+        f"\\renewcommand{{\\BaseShiftCertErrorsAccepted}}{{{int(base_shift.certification_errors)}/{int(base_shift.certification_accepted)}}}",
+        f"\\renewcommand{{\\TunedShiftCertErrorsAccepted}}{{{int(tuned_shift.certification_errors)}/{int(tuned_shift.certification_accepted)}}}",
+        (
+            "\\renewcommand{\\BaseShiftCertUpper}"
+            f"{{{percent(base_shift.certification_upper_bound, 2)}}}"
+        ),
+        (
+            "\\renewcommand{\\TunedShiftCertUpper}"
+            f"{{{percent(tuned_shift.certification_upper_bound, 2)}}}"
+        ),
+        f"\\renewcommand{{\\BaseShiftDecision}}{{{'Pass*' if base_shift.certified else 'Fail'}}}",
+        f"\\renewcommand{{\\TunedShiftDecision}}{{{'Pass*' if tuned_shift.certified else 'Fail'}}}",
+        f"\\renewcommand{{\\BaseShiftTestErrorsAccepted}}{{{int(base_shift.test_errors)}/{int(base_shift.test_accepted)}}}",
+        f"\\renewcommand{{\\TunedShiftTestErrorsAccepted}}{{{int(tuned_shift.test_errors)}/{int(tuned_shift.test_accepted)}}}",
+        f"\\renewcommand{{\\BaseShiftTestCoverage}}{{{percent(base_shift.test_coverage)}}}",
+        f"\\renewcommand{{\\TunedShiftTestCoverage}}{{{percent(tuned_shift.test_coverage)}}}",
+        f"\\renewcommand{{\\BaseShiftTestRisk}}{{{percent(base_shift.test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\TunedShiftTestRisk}}{{{percent(tuned_shift.test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\TunedShiftCandidateErrorsAccepted}}{{{int(tuned_shift.candidate_test_errors)}/{int(tuned_shift.candidate_test_accepted)}}}",
         f"\\renewcommand{{\\PrimaryFinding}}{{{finding}}}",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

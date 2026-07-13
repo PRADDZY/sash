@@ -118,4 +118,7 @@ def test_write_analysis_emits_reproducible_artifacts(tmp_path) -> None:
     assert (tmp_path / "figures" / "risk_coverage_natural.pdf").exists()
     macros = (tmp_path / "paper_results.tex").read_text(encoding="utf-8")
     assert "\\renewcommand{\\BaseCertErrorsAccepted}" in macros
+    assert "\\renewcommand{\\BaseCandidateErrorsAccepted}" in macros
+    assert "\\renewcommand{\\BaseShiftCertErrorsAccepted}" in macros
+    assert "\\renewcommand{\\BaseVisualAUROC}" in macros
     assert "\\renewcommand{\\PrimaryFinding}" in macros

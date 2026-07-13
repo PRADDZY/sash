@@ -1,0 +1,61 @@
+model_key,regime,case_id,failure_category,candidate_gate_behavior,privacy_safe,recommended_action,review_notes
+base,natural,VizWiz_val_00001064,reference disagreement,miss,true,adjudicate or expand references,Login-screen answer is visually supported despite majority references
+base,natural,VizWiz_val_00000653,unsupported object/detail,miss,true,abstain or remove unsupported detail,Yes does not identify the visible startup message
+base,natural,VizWiz_val_00003106,reference disagreement,miss,true,adjudicate or expand references,Blue is compatible with blue-grey references
+base,natural,VizWiz_val_00002670,target outside frame,miss,true,request reacquisition,Flour type is not visible on the photographed panel
+base,natural,VizWiz_val_00004302,reference disagreement,miss,false,adjudicate or expand references,Screen content is privacy-uncertain
+base,natural,VizWiz_val_00003591,unsupported object/detail,miss,true,abstain or remove unsupported detail,Answer asserts detail not supported by the image
+base,natural,VizWiz_val_00002676,reference disagreement,miss,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+base,natural,VizWiz_val_00003978,reference disagreement,miss,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+base,natural,VizWiz_val_00003769,reference disagreement,miss,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+base,natural,VizWiz_val_00000225,reference disagreement,miss,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+base,natural,VizWiz_val_00003953,reference disagreement,miss,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+base,natural,VizWiz_val_00001213,reference disagreement,miss,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+base,natural,VizWiz_val_00001362,OCR failure,miss,true,request closer image or OCR,Text was not read correctly
+base,natural,VizWiz_val_00004081,question ambiguity,miss,true,clarify question or abstain,Question target is underspecified
+base,natural,VizWiz_val_00000387,question ambiguity,miss,true,clarify question or abstain,Question has no clear target
+finetuned,natural,VizWiz_val_00002670,target outside frame,catch,true,request reacquisition,Flour type is not visible on the photographed panel
+finetuned,natural,VizWiz_val_00003568,question ambiguity,catch,false,clarify question or abstain,Privacy-uncertain content and unclear target
+finetuned,natural,VizWiz_val_00003020,reference disagreement,catch,false,adjudicate or expand references,Semantically plausible answer but image is privacy-uncertain
+finetuned,natural,VizWiz_val_00003953,reference disagreement,catch,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+finetuned,natural,VizWiz_val_00001043,reference disagreement,catch,true,adjudicate or expand references,Generated sentence paraphrases the visible dialog
+finetuned,natural,VizWiz_val_00000772,reference disagreement,catch,false,adjudicate or expand references,Semantically plausible answer but image is privacy-uncertain
+finetuned,natural,VizWiz_val_00000589,reference disagreement,catch,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+finetuned,natural,VizWiz_val_00004302,reference disagreement,catch,false,adjudicate or expand references,Screen content is privacy-uncertain
+finetuned,natural,VizWiz_val_00001269,reference disagreement,catch,true,adjudicate or expand references,Generated wording is semantically compatible with the image
+finetuned,natural,VizWiz_val_00003456,reference disagreement,catch,true,adjudicate or expand references,Conjunction variant is semantically compatible with references
+finetuned,natural,VizWiz_val_00000423,reference disagreement,catch,false,adjudicate or expand references,Semantically plausible answer but image is privacy-uncertain
+finetuned,natural,VizWiz_val_00003106,reference disagreement,catch,true,adjudicate or expand references,Blue is compatible with blue-grey references
+finetuned,natural,VizWiz_val_00003098,reference disagreement,catch,false,adjudicate or expand references,Semantically plausible answer but image is privacy-uncertain
+finetuned,natural,VizWiz_val_00003427,reference disagreement,catch,false,adjudicate or expand references,Semantically plausible answer but image is privacy-uncertain
+finetuned,natural,VizWiz_val_00001281,reference disagreement,catch,false,adjudicate or expand references,Semantically plausible answer but image is privacy-uncertain
+base,shift,VizWiz_val_00003106__low_light,reference disagreement,miss,true,adjudicate or expand references,Blue remains visually compatible with blue-grey references
+base,shift,VizWiz_val_00003821__blur,reference disagreement,miss,true,adjudicate or expand references,Papaya is supported while references disagree
+base,shift,VizWiz_val_00003882__low_light,unrecognizable image,miss,true,request reacquisition,Corruption removes recoverable target and color
+base,shift,VizWiz_val_00003839__low_light,reference disagreement,miss,true,adjudicate or expand references,Striped polo shirt matches the visible garment
+base,shift,VizWiz_val_00000387__blur,question ambiguity,miss,false,clarify question or abstain,Unclear target and privacy-uncertain screen
+base,shift,VizWiz_val_00001682__low_resolution,OCR failure,miss,true,request closer image or OCR,Answer omits Nut from Honey Nut Cheerios
+base,shift,VizWiz_val_00002793__low_resolution,OCR failure,miss,true,request closer image or OCR,Answer reads only shine from Shiner Rye Lager
+base,shift,VizWiz_val_00003171__low_light,unrecognizable image,miss,true,request reacquisition,Corruption removes usable color information
+base,shift,VizWiz_val_00001734__low_light,reference disagreement,miss,true,adjudicate or expand references,Product wording matches visible lid and references
+base,shift,VizWiz_val_00001043__blur,reference disagreement,miss,true,adjudicate or expand references,Generated sentence paraphrases the visible dialog
+base,shift,VizWiz_val_00000618__low_resolution,OCR failure,catch,true,request closer image or OCR,Vegetable omits soup and garden specificity
+base,shift,VizWiz_val_00004108__low_light,reference disagreement,catch,true,adjudicate or expand references,Fish oil concentrate is compatible with references
+base,shift,VizWiz_val_00000320__low_light,reference disagreement,catch,true,adjudicate or expand references,Google Australia is a supported refinement
+base,shift,VizWiz_val_00002000__low_light,reference disagreement,catch,true,adjudicate or expand references,Ampersand wording is semantically identical
+base,shift,VizWiz_val_00002427__low_light,reference disagreement,catch,true,adjudicate or expand references,Detailed label answer is compatible with corn references
+finetuned,shift,VizWiz_val_00003456__low_resolution,reference disagreement,catch,true,adjudicate or expand references,Conjunction variant is semantically identical to references
+finetuned,shift,VizWiz_val_00001682__low_resolution,OCR failure,catch,true,request closer image or OCR,Answer omits Nut from Honey Nut Cheerios
+finetuned,shift,VizWiz_val_00003510__blur,reference disagreement,catch,true,adjudicate or expand references,Macaroni and cheese is semantically identical
+finetuned,shift,VizWiz_val_00003106__low_light,reference disagreement,catch,true,adjudicate or expand references,Blue remains visually compatible with blue-grey references
+finetuned,shift,VizWiz_val_00002688__low_light,reference disagreement,catch,false,adjudicate or expand references,Supported answer but a partial person is present
+finetuned,shift,VizWiz_val_00001967__blur,OCR failure,catch,true,request closer image or OCR,Answer misreads Banjees as anjees
+finetuned,shift,VizWiz_val_00000618__low_resolution,OCR failure,catch,true,request closer image or OCR,Vegetable omits soup and garden specificity
+finetuned,shift,VizWiz_val_00004258__low_resolution,OCR failure,catch,true,request closer image or OCR,Answer omits the Peter Pan brand
+finetuned,shift,VizWiz_val_00002338__low_resolution,OCR failure,catch,true,request closer image or OCR,Answer reads only Chill and omits brand and flavor
+finetuned,shift,VizWiz_val_00002259__blur,unsupported object/detail,catch,true,abstain or remove unsupported detail,Answer adds Free although visible label says Classic Catalina
+finetuned,shift,VizWiz_val_00000387__blur,question ambiguity,catch,false,clarify question or abstain,Unclear target and privacy-uncertain screen
+finetuned,shift,VizWiz_val_00002380__low_resolution,reference disagreement,catch,true,adjudicate or expand references,Wild blueberry muffin mix is compatible with references
+finetuned,shift,VizWiz_val_00001936__blur,reference disagreement,catch,true,adjudicate or expand references,Reversed word order preserves label meaning
+finetuned,shift,VizWiz_val_00002030__low_light,reference disagreement,catch,true,adjudicate or expand references,Red and white matches red-white references
+finetuned,shift,VizWiz_val_00003392__low_light,reference disagreement,catch,true,adjudicate or expand references,Startup Repair identifies the generic error screen

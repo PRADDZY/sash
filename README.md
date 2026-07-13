@@ -19,6 +19,17 @@ coverage. Eighteen instrumentation-pilot sources are excluded before the seeded
 score is mean generated-answer token log-likelihood. Grounding-gap and post-acquisition
 scores are exploratory.
 
+## Result
+
+On the untouched natural test set, the public tuned checkpoint raises mean VQA score
+from 69.5% to 72.6% and lowers the entirely-wrong rate from 20.5% to 16.6%. That
+average-utility gain does not yield a deployable selective policy: the prespecified
+base and tuned confidence gates both fail independent certification, with one-sided
+Clopper--Pearson upper bounds of 15.71% and 41.28% against a 10% risk target. The
+prescribed outcome is therefore zero deployed coverage for both models. Candidate
+test outcomes from failed thresholds are retained as diagnostics, never as certified
+results. See `paper/main.pdf` for the complete claim boundary and analysis.
+
 ## Local checks
 
 ```powershell
@@ -46,8 +57,10 @@ exceeds $55, preserving headroom within the reported roughly $70 credit balance.
 used because this Modal workspace does not currently permit L40S functions without a
 payment method.
 
-Research artifacts are written to the Modal volume `sash-vlm-safety`. No result is
-hard-coded into the paper; result macros are generated only from completed predictions.
+Research artifacts are written to the Modal volume `sash-vlm-safety`. Quantitative
+paper macros are generated only from completed predictions; manual review labels are
+archived separately in `failure_review.csv`. The generated raw failure-candidate table
+and images stay untracked so privacy-screened-out cases are not redistributed.
 
 ## Rebuild the analysis and paper
 
@@ -65,6 +78,14 @@ uv run sash-audit artifacts/predictions/base.jsonl artifacts/predictions/finetun
 Push-Location paper
 tectonic main.tex
 Pop-Location
+```
+
+The Modal analysis stage also writes `analysis_bundle.zip`. This single-file download
+avoids a recursive-folder issue in the Modal CLI on Windows:
+
+```powershell
+uv run modal volume get sash-vlm-safety analysis_bundle.zip artifacts/analysis_bundle.zip --force
+Expand-Archive artifacts/analysis_bundle.zip artifacts/analysis -Force
 ```
 
 `read_predictions` refuses wrong checkpoint revisions, reserved-pilot leakage, stale

@@ -1,0 +1,11 @@
+{
+  "alpha": 0.1,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 20260712,
+  "confirmatory_family": "natural-regime mean answer log-likelihood, base and finetuned",
+  "family_delta": 0.05,
+  "fit_risk_limit": 0.05,
+  "per_model_delta": 0.025,
+  "primary_error": "entirely incorrect under official VizWiz scoring (VQA score == 0)",
+  "secondary_status": "exploratory marginal per-pipeline"
+}
