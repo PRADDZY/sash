@@ -231,6 +231,9 @@ def infer_model(model_key: str, pilot: bool = False) -> dict[str, float | int | 
     volumes={str(ARTIFACT_VOLUME_PATH): artifact_volume},
 )
 def analyze() -> dict[str, str | int]:
+    import csv
+    import shutil
+
     from sash_audit.analysis import read_predictions, write_analysis
 
     artifact_volume.reload()
@@ -238,12 +241,26 @@ def analyze() -> dict[str, str | int]:
     frame = read_predictions(paths)
     output_dir = ARTIFACT_VOLUME_PATH / "analysis"
     write_analysis(frame, output_dir)
+    image_dir = output_dir / "failure_images"
+    image_dir.mkdir(exist_ok=True)
+    with (output_dir / "failure_audit.csv").open(encoding="utf-8") as handle:
+        audit_rows = list(csv.DictReader(handle))
+    image_paths = {
+        row[column]
+        for row in audit_rows
+        for column in ("image_path", "clear_image_path")
+        if row[column]
+    }
+    for image_path in image_paths:
+        source = Path(image_path)
+        shutil.copy2(source, image_dir / source.name)
     artifact_volume.commit()
     return {
         "rows": len(frame),
         "metrics": str(output_dir / "metrics.csv"),
         "paired_differences": str(output_dir / "paired_differences.csv"),
         "paper_results": str(output_dir / "paper_results.tex"),
+        "failure_images": str(image_dir),
     }
 
 

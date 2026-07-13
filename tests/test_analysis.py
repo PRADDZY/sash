@@ -42,6 +42,7 @@ def prediction_rows() -> pd.DataFrame:
                             "generated_tokens": 1,
                             "generated_token_ids": [1],
                             "image_path": f"/vol/{case_id}.jpg",
+                            "clear_image_path": None,
                             "vqa_score": accuracy,
                             "entirely_wrong": not bool(accuracy),
                             "false_answer_on_unanswerable": index % 4 == 0 and not bool(accuracy),
