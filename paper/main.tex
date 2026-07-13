@@ -6,6 +6,7 @@
 \usepackage[margin=0.85in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{flafter}
 \usepackage{graphicx}
 \usepackage{microtype}
 \usepackage[numbers,sort&compress]{natbib}
@@ -107,7 +108,6 @@
 \newcommand{\BaseShiftTestRisk}{}
 \newcommand{\TunedShiftTestRisk}{}
 \newcommand{\TunedShiftCandidateErrorsAccepted}{}
-\newcommand{\PrimaryFinding}{}
 \IfFileExists{../artifacts/analysis/paper_results.tex}{%
   \input{../artifacts/analysis/paper_results.tex}%
 }{\PackageError{sash-paper}{Missing generated analysis artifact}{Run sash-audit first.}}
@@ -138,7 +138,12 @@ $\delta=\PrimaryFailureProb$ per policy, controlling the probability of any fals
 certification in the two-policy family at most \FamilyFailureProb.  Thresholds
 are then frozen for test evaluation.  This control is conditional on i.i.d.
 sampling and both checkpoints being independent of the certification labels.
-\PrimaryFinding{}  This audit concerns selective factual reliability on one
+On \TestN{} untouched natural questions, the public tuned checkpoint raises mean
+VQA from \BaseVQA{} to \TunedVQA{} and lowers the entirely-wrong rate from
+\BaseWrongRate{} to \TunedWrongRate{}.  Neither policy's certification bound
+(\BaseCertUpper{} base; \TunedCertUpper{} tuned) meets the \TargetRisk{} target,
+so prescribed deployed coverage is \BaseTestCoverage{} for base and
+\TunedTestCoverage{} for tuned.  This audit concerns selective factual reliability on one
 assistive-VQA distribution; it does not establish jailbreak safety, fairness,
 privacy, robustness to arbitrary shift, or user benefit.
 \end{abstract}
@@ -164,7 +169,7 @@ that a system avoids entirely wrong VQA answers at a prespecified risk tolerance
 while answering as many questions as possible.
 
 Selective VQA makes this trade-off explicit through risk and coverage
-\citep{whitehead2022reliablevqa,Dancette_2023_CVPR}.  Our work sample contributes:
+\citep{whitehead2022reliablevqa,Dancette_2023_CVPR}.  This study contributes:
 \begin{itemize}
   \item a paired base-versus-domain-tuned audit using identical questions,
         prompts, decoding, scoring, and split assignments;
@@ -201,7 +206,7 @@ in-distribution certification from exploratory shift results.
 
 \paragraph{Risk control.}
 Learn-then-test methods calibrate fixed predictive procedures using hypothesis
-tests \citep{angelopoulos2021learntest}, while conformal risk control extends
+tests \citep{angelopoulos2021learntest}.  Conformal risk control extends
 finite-sample control to bounded monotone losses
 \citep{angelopoulos2024conformal}.  Weighted conformal methods require additional
 assumptions under covariate shift \citep{tibshirani2019conformal}.  Dedicated
@@ -357,7 +362,11 @@ and clear-image visual-sensitivity scores; the model is not allowed to regenerat
 after seeing the clear image.  We show per-pipeline risk--coverage curves and
 failure examples, but do not reuse the primary certificate or claim simultaneous
 guarantees.  Any exact bounds for these diagnostics are exploratory marginal checks
-at $\delta=\ExploratoryFailureProb$.
+at $\delta=\ExploratoryFailureProb$.  Each exploratory model--regime--score
+combination repeats the same fit-set threshold rule, one-shot certification check,
+and test freeze defined above; a failed check deploys abstain-all.  Each uses the
+corresponding $F/C/T$ split, and no natural-regime threshold or certificate is
+transferred to corruption.
 
 \section{Results}
 \label{sec:results}
@@ -387,7 +396,9 @@ Public tuned & \TunedVQA & \TunedThreshold & \TunedCertErrorsAccepted & \TunedCe
 \subsection{Primary outcome}
 
 Table~\ref{tab:primary} records the only confirmatory certification checks.
-\PrimaryFinding{}  The base certification and deployed-test counts are
+Neither natural-regime policy meets the numerical gate: the base and tuned CP upper
+bounds are \BaseCertUpper{} and \TunedCertUpper{}, both above \TargetRisk{}.
+The base certification and deployed-test counts are
 \BaseCertErrorsAccepted{} and \BaseTestErrorsAccepted{} errors/accepted; the tuned
 counts are \TunedCertErrorsAccepted{} and \TunedTestErrorsAccepted{}.
 The failed frozen thresholds would have accepted \BaseCandidateErrorsAccepted{}
@@ -431,27 +442,29 @@ missing selective-reliability certificate.
 \subsection{Calibration and shift}
 
 Platt-scaled ECE and Brier scores are \BaseECE{} and \BaseBrier{} for the base
-pipeline and \TunedECE{} and \TunedBrier{} for the public tuned pipeline.  The archived
-reliability diagrams and these scalar summaries are descriptive probability-quality
+pipeline and \TunedECE{} and \TunedBrier{} for the public tuned pipeline.  These
+scalar summaries are descriptive probability-quality
 checks; they do not replace the exact certification decision.  They are also mixed:
 ECE and correctness AUROC (\BaseAUROC{} versus \TunedAUROC{}) favor the base
 pipeline, whereas Brier score and normalized partial AURC favor the tuned pipeline.
 
 On the balanced answerable corruption test ($n=\ShiftN$), the separately fitted base
-likelihood policy passes its exploratory marginal check with
-\BaseShiftCertErrorsAccepted{} errors/answers and a \BaseShiftCertUpper{} upper
-bound; it then answers \BaseShiftTestErrorsAccepted{} at
+likelihood policy passes its exploratory marginal check with certification
+$e/n=\BaseShiftCertErrorsAccepted{}$ and a \BaseShiftCertUpper{} upper
+bound; it then records \BaseShiftTestErrorsAccepted{} errors/accepted answers at
 \BaseShiftTestCoverage{} coverage and \BaseShiftTestRisk{} observed risk.  The tuned
-policy's \TunedShiftCertErrorsAccepted{} check has a \TunedShiftCertUpper{} upper
+policy's certification $e/n=\TunedShiftCertErrorsAccepted{}$ has a
+\TunedShiftCertUpper{} upper
 bound and fails, so its prescribed coverage is \TunedShiftTestCoverage{} (the failed
-candidate threshold is \TunedShiftCandidateErrorsAccepted{} on test).  Aggregate VQA
+candidate records \TunedShiftCandidateErrorsAccepted{} errors/accepted answers on
+test).  Aggregate VQA
 is \BaseShiftVQA{} versus \TunedShiftVQA{} (paired difference \ShiftVQADelta{},
 interval [\ShiftVQADeltaLow{}, \ShiftVQADeltaHigh{}]); entirely-wrong rates are
 \BaseShiftWrongRate{} and \TunedShiftWrongRate{} (difference \ShiftWrongDelta{},
 interval [\ShiftWrongDeltaLow{}, \ShiftWrongDeltaHigh{}]).  The tuned model's
 substantive-answer rate is also lower (\TunedShiftSubstantiveRate{} versus
 \BaseShiftSubstantiveRate{}).  Low resolution has the highest entirely-wrong rate
-for both pipelines in the archived corruption-stratified table.  This study is
+for both pipelines.  This study is
 exploratory, marginal, answerable-only evidence about failure behavior, not a
 transferred or family-wise robustness guarantee.
 
@@ -470,8 +483,9 @@ requires a separate experiment.
 
 \section{Failure Analysis}
 
-We manually review the 15 highest-confidence substantive-answer test errors in each
-model-by-regime stratum, ordered by score then case ID, and assign one primary category:
+We conduct a Codex-assisted case-by-case review of the 15 highest-confidence
+substantive-answer test errors in each model-by-regime stratum, ordered by score then
+case ID, and assign one primary category:
 unrecognizable image, target outside the frame, OCR failure, question ambiguity,
 unsupported object/detail, or reference disagreement.  Review is conducted after
 primary metrics are frozen and cannot change correctness labels.  For publication we
@@ -509,18 +523,20 @@ Normalize conjunctions or adjudicate. \\
 \end{tabular}
 \end{table}
 
-Across all 60 reviewed cases, 39 are reference disagreements, nine OCR failures,
-five question ambiguities, three unsupported-detail errors, two unrecognizable
-images, and two targets outside the frame.  The base candidate selector misses all
+Across 60 reviewed model-by-regime rows (52 unique case IDs and 48 unique source
+questions), 39 are reference disagreements, nine OCR failures, five question
+ambiguities, three unsupported-detail errors, two unrecognizable images, and two
+targets outside the frame.  The base candidate selector misses all
 15 natural cases and 10/15 shifted cases; the tuned candidate selector catches all
 30 reviewed cases.  These are deterministic top-score audit counts, not prevalence
-estimates.  All four displayed rows pass the prespecified privacy screen; the full
-labels and exclusions are archived in \texttt{failure\_review.csv}.  For natural
+estimates.  All four displayed rows pass the prespecified privacy screen; their
+source fields are retained in \texttt{publication\_examples.csv}, while the full
+labels and exclusions are retained in \texttt{failure\_review.csv}.  For natural
 data, ``candidate'' remains counterfactual because the failed certification gate
 forces the deployed policy to abstain on every case.
 
-The analysis should distinguish a confidence-ranking failure from a perception
-failure: a correct abstention on missing evidence is desirable, whereas an answer
+This review distinguishes a confidence-ranking failure from a perception failure:
+a correct abstention on missing evidence is desirable, whereas an answer
 that happens to match references without using the image is not evidence of
 grounding.  The latter distinction follows the VizWiz grounding literature
 \citep{Chen_2022_CVPR} and is not settled by the primary certificate.
@@ -553,18 +569,21 @@ still depends on tokenization and decoding.  Platt calibration can improve ECE
 without improving the ordering needed for selective coverage.  Finally, a causal
 claim about \emph{domain fine-tuning} requires the checkpoints to differ only by the
 documented tuning intervention; otherwise the comparison is between two pipelines,
-not an isolated treatment effect.
+not an isolated treatment effect.  The single Codex-assisted qualitative coding pass
+has no independent second reviewer, so its category counts are diagnostic rather than
+reliability-tested annotations.
 
 \section{Ethics and AI Assistance}
 
 The study uses an existing assistive-VQA benchmark and does not infer users'
-identities or disability status.  Qualitative examples must be screened for private
-or identifying content before publication.  Deployment language should preserve
-user agency: abstention is a request for more evidence or human help, not a judgment
-about the user's ability to pose a question.
+identities or disability status.  The four displayed qualitative examples were
+screened for private or identifying content before inclusion.  Deployment language
+should preserve user agency: abstention is a request for more evidence or human help,
+not a judgment about the user's ability to pose a question.
 
 OpenAI Codex assisted with literature retrieval, protocol refinement, implementation,
-experimental orchestration, statistical checks, and manuscript drafting.  The
+experimental orchestration, statistical checks, qualitative failure categorization,
+and manuscript drafting.  The
 author selected the research question and checkpoints, directed the work, and is
 responsible for source verification, interpretation, and every final numerical
 claim.  No generated value is treated as an experimental result unless it is
@@ -574,14 +593,16 @@ reproduced from the archived prediction and analysis artifacts.
 
 We asked whether a public checkpoint presented as domain-tuned exhibits better
 selective reliability than its base family under a prespecified entirely-wrong risk target.
-\PrimaryFinding{}  This outcome compares two public pipelines and does not identify
-fine-tuning as its cause.  It is bounded to the frozen VizWiz evaluation and the
-fit/certify/test protocol described above; broader safety and user-impact claims
-require separate evidence.
+The tuned checkpoint improves average VQA and reduces entirely-wrong outputs, but
+neither likelihood policy passes independent certification, so neither provides
+certified selective coverage at the target risk.  This outcome compares two public
+pipelines and does not identify fine-tuning as its cause.  It is bounded to the frozen
+VizWiz evaluation and the fit/certify/test protocol described above; broader safety
+and user-impact claims require separate evidence.
 
 \renewcommand{\bibfont}{\footnotesize}
 \setlength{\bibsep}{1pt}
-\bibliographystyle{plainnat}
+\bibliographystyle{unsrtnat}
 \bibliography{references}
 
 \end{document}

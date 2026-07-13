@@ -121,4 +121,4 @@ def test_write_analysis_emits_reproducible_artifacts(tmp_path) -> None:
     assert "\\renewcommand{\\BaseCandidateErrorsAccepted}" in macros
     assert "\\renewcommand{\\BaseShiftCertErrorsAccepted}" in macros
     assert "\\renewcommand{\\BaseVisualAUROC}" in macros
-    assert "\\renewcommand{\\PrimaryFinding}" in macros
+    assert "\\,pp" in macros

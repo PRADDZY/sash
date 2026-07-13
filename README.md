@@ -59,8 +59,9 @@ payment method.
 
 Research artifacts are written to the Modal volume `sash-vlm-safety`. Quantitative
 paper macros are generated only from completed predictions; manual review labels are
-archived separately in `failure_review.csv`. The generated raw failure-candidate table
-and images stay untracked so privacy-screened-out cases are not redistributed.
+archived in `failure_review.csv`, with the four privacy-safe table rows in
+`publication_examples.csv`. The generated raw failure-candidate table and images stay
+untracked so privacy-screened-out cases are not redistributed.
 
 ## Rebuild the analysis and paper
 
