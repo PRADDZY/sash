@@ -1,7 +1,7 @@
 {
   "project": "Does a Public VizWiz Checkpoint Improve Selective Reliability?",
   "run_date": "2026-07-13",
-  "analysis_source_commit": "525ef65f63e40853b4ca3a1b207a207a6b8b10df",
+  "analysis_source_commit": "db2981356d0a40e1339ed844f89220934b5d77c1",
   "dataset": {
     "id": "lmms-lab/VizWiz-VQA",
     "revision": "d428a2dae984f79cf1b9d99467dfa883e0c30686",
@@ -93,7 +93,7 @@
     "public_tuned_resume_complete": "ap-WtTmw1D8SaHdZcWa5XYybl",
     "initial_analysis": "ap-iYhlPwPz1o0vq4E5bpmPhB",
     "zip_bundle_analysis": "ap-uAkh7bossbOlGoPmPjBbBU",
-    "final_analysis": "ap-ulh7yQM094cTuMnb3ZaCE0"
+    "final_analysis": "ap-jJOBS4AR7Vfif6qsFpafFu"
   },
   "inference_stats": {
     "base": {
@@ -135,9 +135,10 @@
       "paired_differences_csv": "6a4b143d7d7e686630ed1b649ac6b8040b48352ee4caf08aea368b6fea9e3446",
       "subgroup_metrics_csv": "329c81c38a2e47b51660a19574bcae9644c16b2fa795f21d1a2c0fdde1586f6f",
       "failure_review_csv": "66699da5bcedfe1c9cd64773d38bee7f6da62506a58ca6b9b827a2dfadc1d9ca",
-      "paper_results_tex": "c739344fea1f241db64982261f90d35baf61c52a83cc9910ab5f427c0f421bf1",
-      "paper_pdf": "09f96d8c79e9b82a394449b2f8680057840e18956fcea5b181d2871b4e11670a",
-      "final_modal_analysis_bundle": "453db1efcadc0999860d5ca457e54e4cb83c9a42e9370254498ec5de029ef29b"
+      "publication_examples_csv": "aaaf454727d4086f5d558905a3bae273dd9fc332765c7591510193fec3378b8e",
+      "paper_results_tex": "f1b95c5c84e4f01d12a1adf5ec14dd1fa44b70a55c73854e27e6da521dad9bb4",
+      "paper_pdf": "d6431081b562c3079f8db6167b134bcf4c9ddb3ca5d4b0acfd2e12f4c20acc8e",
+      "final_modal_analysis_bundle": "3ebf2eaa604ef0763eec15c32798bdc9799280cceafa21a53ae213e511420b32"
     }
   },
   "reproduction_check": {
@@ -164,7 +165,7 @@
   },
   "manuscript": {
     "pages": 8,
-    "pdf_bytes": 133431,
+    "pdf_bytes": 134644,
     "source_date_epoch": 1783900800,
     "unresolved_citations": 0,
     "placeholder_tokens": 0,
