@@ -1,0 +1,173 @@
+{
+  "project": "Does a Public VizWiz Checkpoint Improve Selective Reliability?",
+  "run_date": "2026-07-13",
+  "analysis_source_commit": "525ef65f63e40853b4ca3a1b207a207a6b8b10df",
+  "dataset": {
+    "id": "lmms-lab/VizWiz-VQA",
+    "revision": "d428a2dae984f79cf1b9d99467dfa883e0c30686",
+    "original_validation_rows": 4319,
+    "pilot_sources_excluded": 18,
+    "natural_rows": 4301,
+    "natural_split": {
+      "fit": 860,
+      "certification": 860,
+      "test": 2581
+    },
+    "shift_rows": 1200,
+    "shift_split": {
+      "fit": 300,
+      "certification": 300,
+      "test": 600
+    },
+    "shift_test_balance": {
+      "blur": 200,
+      "low_light": 200,
+      "low_resolution": 200
+    },
+    "split_seed": 20260712,
+    "image_serialization": "RGB JPEG quality 95",
+    "corruptions": {
+      "blur": "Gaussian radius 4.0",
+      "low_light": "brightness factor 0.25",
+      "low_resolution": "bilinear downsample longest side to 96 pixels then restore"
+    }
+  },
+  "models": {
+    "base": {
+      "id": "Qwen/Qwen3-VL-8B-Instruct",
+      "revision": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b"
+    },
+    "public_tuned": {
+      "id": "praddzy/Qwen-VizWiz-8B",
+      "revision": "984042ce162749db644dd3e6be19d6f20aafe3cf",
+      "provenance_caveat": "The public model card does not provide a complete training-data audit; absence of overlap with VizWiz validation labels is unverified."
+    }
+  },
+  "inference": {
+    "platform": "Modal",
+    "gpu": "NVIDIA A10",
+    "model_dtype": "bfloat16",
+    "generation": {
+      "decoding": "greedy",
+      "do_sample": false,
+      "num_beams": 1,
+      "max_new_tokens": 32
+    },
+    "prompt": "Answer the visual question using only evidence visible in the image. If there is not enough visual evidence, answer exactly 'unanswerable'. Return only a short answer, without explanation.",
+    "confidence": "Mean generated-token log-likelihood recomputed with FP64 log-softmax over BF16 model logits.",
+    "image_pixels": {
+      "minimum": 65536,
+      "maximum": 1048576
+    },
+    "runtime_packages": {
+      "python": "3.11",
+      "accelerate": "1.12.0",
+      "matplotlib": "3.10.7",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "pillow": "12.1.0",
+      "scipy": "1.16.3",
+      "torch": "2.6.0",
+      "torchvision": "0.21.0",
+      "transformers": "4.57.6"
+    }
+  },
+  "protocol": {
+    "primary_error": "Official VizWiz VQA score equals zero.",
+    "coverage_eligibility": "Nonempty generated answer whose semantic normalization is not 'unanswerable'.",
+    "fit_risk_heuristic": 0.05,
+    "target_risk": 0.10,
+    "family_false_certification_probability": 0.05,
+    "per_model_delta": 0.025,
+    "bound": "One-sided Clopper-Pearson",
+    "bootstrap_samples": 2000,
+    "bootstrap_seed": 20260712,
+    "failed_gate_policy": "Abstain on all test questions; preserve failed-threshold test outcomes only as diagnostics."
+  },
+  "modal_runs": {
+    "prepare": "ap-OzIBXwE50uAoE2X5HTc8cU",
+    "clean_fp64_pilot": "ap-vTnoMUBoBrCENWd48CEOKt",
+    "base_initial_partial": "ap-RZrUkV1WS75EaxBGCYEteM",
+    "public_tuned_initial_partial": "ap-4lIDYtnNaKpubrL7SR0Qrf",
+    "base_resume_complete": "ap-UDsW8A2bKPUgad47M7SDwJ",
+    "public_tuned_resume_complete": "ap-WtTmw1D8SaHdZcWa5XYybl",
+    "initial_analysis": "ap-iYhlPwPz1o0vq4E5bpmPhB",
+    "zip_bundle_analysis": "ap-uAkh7bossbOlGoPmPjBbBU",
+    "final_analysis": "ap-ulh7yQM094cTuMnb3ZaCE0"
+  },
+  "inference_stats": {
+    "base": {
+      "initial_rows_persisted": 653,
+      "resume_rows_written": 4848,
+      "total_rows": 5501,
+      "resume_load_seconds": 33.8546,
+      "resume_inference_seconds": 6552.7971,
+      "resume_natural_seconds": 4353.2176,
+      "resume_shift_seconds": 2152.0827,
+      "peak_gpu_gib": 17.115
+    },
+    "public_tuned": {
+      "initial_rows_persisted": 1043,
+      "resume_rows_written": 4458,
+      "total_rows": 5501,
+      "resume_load_seconds": 43.4049,
+      "resume_inference_seconds": 6547.6591,
+      "resume_natural_seconds": 4304.9138,
+      "resume_shift_seconds": 2129.714,
+      "peak_gpu_gib": 17.115
+    }
+  },
+  "integrity": {
+    "prediction_rows": 11002,
+    "unique_cases_per_model": 5501,
+    "duplicate_rows": 0,
+    "pilot_rows": 18,
+    "pilot_leakage_rows": 0,
+    "exact_zero_mean_scores": 0,
+    "exact_zero_token_logprobs": 0,
+    "generated_token_logprobs": 32365,
+    "sha256": {
+      "natural_and_shift_manifest": "9c91fc78baad3fd11efc07e822a1c752a04a0f1e91d140119a136c10f19a0695",
+      "pilot_manifest": "f1cd7e828702d8ad4040e2281f38c616c2b4418fcd8c49671d780d7f29284ef3",
+      "base_predictions": "077105a361b7b89ee3474742b893bc843c330e09a842268c8c141dc987156d39",
+      "public_tuned_predictions": "aaccabb49525643f824dd333e46ffaa8cbc0e87327474e1bd7cfbc1aa226f3cf",
+      "metrics_csv": "b071fed2898e54a11f49dc1e1bab97a06ccef7185047385063917a1058bb89c0",
+      "paired_differences_csv": "6a4b143d7d7e686630ed1b649ac6b8040b48352ee4caf08aea368b6fea9e3446",
+      "subgroup_metrics_csv": "329c81c38a2e47b51660a19574bcae9644c16b2fa795f21d1a2c0fdde1586f6f",
+      "failure_review_csv": "66699da5bcedfe1c9cd64773d38bee7f6da62506a58ca6b9b827a2dfadc1d9ca",
+      "paper_results_tex": "c739344fea1f241db64982261f90d35baf61c52a83cc9910ab5f427c0f421bf1",
+      "paper_pdf": "d871c0fd6f066daebb8e8753ca6c7c158bc5968faedab98922745f18068d700d",
+      "final_modal_analysis_bundle": "453db1efcadc0999860d5ca457e54e4cb83c9a42e9370254498ec5de029ef29b"
+    }
+  },
+  "reproduction_check": {
+    "modal_vs_local": "All nonnumeric fields and generated paper macros matched exactly after newline normalization.",
+    "maximum_numeric_absolute_difference": 2.77555756156289e-17,
+    "difference_location": "Exploratory base-shift visual-delta correctness Brier score; final decimal bit only.",
+    "local_environment": {
+      "python": "3.13.6",
+      "numpy": "2.5.1",
+      "pandas": "2.3.3",
+      "scipy": "1.18.0",
+      "matplotlib": "3.11.0",
+      "pillow": "12.3.0",
+      "modal_client": "1.3.5",
+      "tectonic": "0.16.9"
+    }
+  },
+  "compute_cost": {
+    "a10_hourly_usd": 1.1016,
+    "clean_pass_pilot_projection_usd": 4.239,
+    "estimated_actual_gpu_spend_usd": 4.8,
+    "conservative_upper_estimate_usd": 6.0,
+    "note": "Estimate combines successful A10 wall times with persisted partial-run rows and pilot overhead; the Modal billing dashboard is authoritative for the exact charge. CPU analysis is excluded."
+  },
+  "manuscript": {
+    "pages": 8,
+    "pdf_bytes": 133433,
+    "unresolved_citations": 0,
+    "placeholder_tokens": 0,
+    "privacy_screened_publication_examples": 4,
+    "manual_failure_rows": 60
+  }
+}
