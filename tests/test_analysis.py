@@ -3,12 +3,19 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from sash_audit.analysis import analyze_predictions, validate_prediction_frame, write_analysis
+from sash_audit.analysis import (
+    analyze_predictions,
+    read_predictions,
+    validate_prediction_frame,
+    write_analysis,
+)
+from sash_audit.inference import MODEL_SPECS
 
 
 def prediction_rows() -> pd.DataFrame:
     rows = []
     for model_key, offset in (("base", 0.0), ("finetuned", 0.05)):
+        model_id, revision = MODEL_SPECS[model_key]
         for regime in ("natural", "shift"):
             for split in ("fit", "certification", "test"):
                 for index in range(60):
@@ -20,14 +27,20 @@ def prediction_rows() -> pd.DataFrame:
                             "case_id": case_id,
                             "row_index": index,
                             "model_key": model_key,
+                            "model_id": model_id,
+                            "model_revision": revision,
                             "evaluation_split": split,
                             "regime": regime,
+                            "source_case_id": None,
                             "answerable": index % 4 != 0,
                             "answer_type": "unanswerable" if index % 4 == 0 else "other",
                             "corruption": "blur" if regime == "shift" else "none",
                             "question": "What is shown?",
                             "reference_answers": ["object"] * 10,
                             "generated_answer": "object" if accuracy else "wrong",
+                            "normalized_answer": "object" if accuracy else "wrong",
+                            "generated_tokens": 1,
+                            "generated_token_ids": [1],
                             "image_path": f"/vol/{case_id}.jpg",
                             "vqa_score": accuracy,
                             "entirely_wrong": not bool(accuracy),
@@ -74,6 +87,17 @@ def test_analysis_requires_complete_paired_splits() -> None:
         validate_prediction_frame(mismatched)
 
 
+def test_prediction_reader_rejects_stale_vqa_scores(tmp_path) -> None:
+    row = prediction_rows().iloc[[0]].copy()
+    path = tmp_path / "prediction.jsonl"
+    row.to_json(path, orient="records", lines=True)
+    assert len(read_predictions([path])) == 1
+    row.loc[:, "vqa_score"] = 0.5
+    row.to_json(path, orient="records", lines=True)
+    with pytest.raises(ValueError, match="official recomputation"):
+        read_predictions([path])
+
+
 def test_write_analysis_emits_reproducible_artifacts(tmp_path) -> None:
     write_analysis(
         prediction_rows(),
@@ -91,3 +115,6 @@ def test_write_analysis_emits_reproducible_artifacts(tmp_path) -> None:
     }
     assert expected.issubset({path.name for path in tmp_path.iterdir()})
     assert (tmp_path / "figures" / "risk_coverage_natural.pdf").exists()
+    macros = (tmp_path / "paper_results.tex").read_text(encoding="utf-8")
+    assert "\\renewcommand{\\BaseCertErrorsAccepted}" in macros
+    assert "\\renewcommand{\\PrimaryFinding}" in macros

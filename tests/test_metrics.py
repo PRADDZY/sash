@@ -42,6 +42,8 @@ def test_official_normalization_and_abstention_mapping() -> None:
     assert normalize_answer("1,000 well-known items") == "1000 wellknown items"
     assert normalize_answer("Im sure") == "i'm sure"
     assert canonical_prediction("I cannot determine that from the image.") == "unanswerable"
+    assert canonical_prediction("I cannot see, maybe it says 7") != "unanswerable"
+    assert vqa_accuracy("I cannot see", ["unanswerable"] * 10) == 0.0
 
 
 def test_selective_curve_preserves_ties_and_uses_step_aurc() -> None:
@@ -52,6 +54,17 @@ def test_selective_curve_preserves_ties_and_uses_step_aurc() -> None:
         2 / 3
     )
     assert math.isnan(aurc([], []))
+
+
+def test_selective_policy_excludes_semantic_abstentions() -> None:
+    eligible = [True, False, True]
+    points = selective_curve([0.9, 1.0, 0.8], [1.0, 0.0, 0.0], eligible=eligible)
+    assert [point.answered for point in points] == [1, 2]
+    assert [point.coverage for point in points] == pytest.approx([1 / 3, 2 / 3])
+    threshold, risk, accepted = learn_selective_threshold(
+        [0.9, 1.0, 0.8], [False, True, True], risk_limit=0.0, eligible=eligible
+    )
+    assert (threshold, risk, accepted) == (0.9, 0.0, 1)
 
 
 def test_auroc_platt_calibration_ece_and_brier() -> None:

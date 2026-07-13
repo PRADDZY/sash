@@ -159,9 +159,13 @@ _COMMA = re.compile(r"(\d)(,)(\d)")
 _SPACE = re.compile(r"\s+")
 _ABSTENTION_PATTERNS = (
     re.compile(r"^unanswerable$"),
-    re.compile(r"^(?:i\s+)?(?:can(?:not|'t)|unable to)\s+(?:answer|tell|determine|see)\b"),
-    re.compile(r"^(?:the\s+)?image\s+is\s+(?:too\s+)?(?:blurry|unclear|dark|illegible)\b"),
-    re.compile(r"^(?:not|insufficiently)\s+(?:visible|clear)\b"),
+    re.compile(
+        r"^(?:i\s+)?(?:can(?:not|'t)|(?:am\s+)?unable to)\s+"
+        r"(?:answer|tell|determine|see)(?:\s+(?:that|it|this|anything|answer))?"
+        r"(?:\s+from\s+(?:this\s+)?image)?$"
+    ),
+    re.compile(r"^image\s+is\s+(?:too\s+)?(?:blurry|unclear|dark|illegible)$"),
+    re.compile(r"^(?:not|insufficiently)\s+(?:visible|clear)$"),
 )
 
 
@@ -206,7 +210,7 @@ def vqa_accuracy(prediction: object, answers: Sequence[object]) -> float:
 
     if not answers:
         raise ValueError("VQA scoring requires at least one reference answer")
-    pred = canonical_prediction(prediction)
+    pred = normalize_answer(prediction)
     refs = [normalize_answer(_answer_text(answer)) for answer in answers]
     per_reference = [
         min(1.0, sum(pred == other for j, other in enumerate(refs) if j != index) / 3.0)
@@ -239,13 +243,30 @@ def _metric_arrays(
     return score_array, outcome_array
 
 
-def selective_curve(scores: Sequence[float], accuracies: Sequence[float]) -> list[SelectivePoint]:
-    """Return all attainable tie-preserving soft-risk/coverage points."""
+def _eligibility_array(eligible: Sequence[bool | int] | None, length: int) -> np.ndarray:
+    if eligible is None:
+        return np.ones(length, dtype=bool)
+    values = np.asarray(eligible, dtype=bool)
+    if values.shape != (length,):
+        raise ValueError("eligible must be a matching 1D array")
+    return values
+
+
+def selective_curve(
+    scores: Sequence[float],
+    accuracies: Sequence[float],
+    *,
+    eligible: Sequence[bool | int] | None = None,
+) -> list[SelectivePoint]:
+    """Return all attainable tie-preserving risk/coverage points."""
 
     score_array, acc_array = _metric_arrays(scores, accuracies)
-    if len(score_array) == 0:
+    eligible_array = _eligibility_array(eligible, len(score_array))
+    if len(score_array) == 0 or not eligible_array.any():
         return []
-    order = np.argsort(-score_array, kind="stable")
+    order = np.flatnonzero(eligible_array)[
+        np.argsort(-score_array[eligible_array], kind="stable")
+    ]
     sorted_scores = score_array[order]
     errors = 1.0 - np.clip(acc_array[order], 0.0, 1.0)
     cumulative_errors = np.cumsum(errors)
@@ -257,7 +278,7 @@ def selective_curve(scores: Sequence[float], accuracies: Sequence[float]) -> lis
         points.append(
             SelectivePoint(
                 threshold=float(threshold),
-                coverage=answered / len(sorted_scores),
+                coverage=answered / len(score_array),
                 risk=float(cumulative_errors[index] / answered),
                 answered=answered,
             )
@@ -266,20 +287,33 @@ def selective_curve(scores: Sequence[float], accuracies: Sequence[float]) -> lis
 
 
 def coverage_at_risk(
-    scores: Sequence[float], accuracies: Sequence[float], risk_limit: float
+    scores: Sequence[float],
+    accuracies: Sequence[float],
+    risk_limit: float,
+    *,
+    eligible: Sequence[bool | int] | None = None,
 ) -> SelectivePoint | None:
-    """Descriptive oracle coverage at a test-set soft-risk limit."""
+    """Descriptive oracle coverage at a test-set risk limit."""
 
     if not 0 <= risk_limit <= 1:
         raise ValueError("risk_limit must be in [0, 1]")
-    valid = [point for point in selective_curve(scores, accuracies) if point.risk <= risk_limit]
+    valid = [
+        point
+        for point in selective_curve(scores, accuracies, eligible=eligible)
+        if point.risk <= risk_limit
+    ]
     return max(valid, key=lambda point: point.coverage, default=None)
 
 
-def aurc(scores: Sequence[float], accuracies: Sequence[float]) -> float:
-    """Area under the attainable risk-coverage step curve (lower is better)."""
+def aurc(
+    scores: Sequence[float],
+    accuracies: Sequence[float],
+    *,
+    eligible: Sequence[bool | int] | None = None,
+) -> float:
+    """Coverage-normalized area over eligible substantive predictions."""
 
-    points = selective_curve(scores, accuracies)
+    points = selective_curve(scores, accuracies, eligible=eligible)
     if not points:
         return math.nan
     result = 0.0
@@ -287,7 +321,7 @@ def aurc(scores: Sequence[float], accuracies: Sequence[float]) -> float:
     for point in points:
         result += point.risk * (point.coverage - previous_coverage)
         previous_coverage = point.coverage
-    return float(result)
+    return float(result / points[-1].coverage)
 
 
 # Backward-compatible name used by the early scaffold.
@@ -407,15 +441,21 @@ def effective_reliability(
 
 
 def best_effective_reliability_threshold(
-    scores: Sequence[float], accuracies: Sequence[float], error_cost: float
+    scores: Sequence[float],
+    accuracies: Sequence[float],
+    error_cost: float,
+    *,
+    eligible: Sequence[bool | int] | None = None,
 ) -> tuple[float, float]:
     score_array, acc_array = _metric_arrays(scores, accuracies)
     if len(score_array) == 0:
         raise ValueError("threshold fitting requires at least one observation")
-    candidates = [math.inf, *sorted(set(map(float, score_array)), reverse=True)]
+    eligible_array = _eligibility_array(eligible, len(score_array))
+    candidates = [math.inf, *sorted(set(map(float, score_array[eligible_array])), reverse=True)]
     best_threshold, best_score = math.inf, 0.0
     for threshold in candidates:
-        value = effective_reliability(acc_array, score_array >= threshold, error_cost)
+        answered = eligible_array & (score_array >= threshold)
+        value = effective_reliability(acc_array, answered, error_cost)
         if value > best_score:
             best_threshold, best_score = threshold, value
     return best_threshold, best_score
@@ -426,6 +466,7 @@ def learn_selective_threshold(
     entirely_wrong: Sequence[bool | int],
     *,
     risk_limit: float = 0.05,
+    eligible: Sequence[bool | int] | None = None,
 ) -> tuple[float, float, int]:
     """Learn the maximum-coverage tie-preserving threshold on fit data."""
 
@@ -435,9 +476,10 @@ def learn_selective_threshold(
     errors = error_values.astype(bool)
     if len(score_array) == 0:
         raise ValueError("threshold fitting requires at least one observation")
+    eligible_array = _eligibility_array(eligible, len(score_array))
     best: tuple[float, float, int] = (math.inf, math.nan, 0)
-    for threshold in sorted(set(map(float, score_array)), reverse=True):
-        mask = score_array >= threshold
+    for threshold in sorted(set(map(float, score_array[eligible_array])), reverse=True):
+        mask = eligible_array & (score_array >= threshold)
         accepted = int(mask.sum())
         risk = float(errors[mask].mean())
         if risk <= risk_limit and accepted > best[2]:
@@ -475,6 +517,7 @@ def certify_selective_threshold(
     threshold: float,
     alpha: float = 0.10,
     delta: float = 0.05,
+    eligible: Sequence[bool | int] | None = None,
 ) -> CertificationResult:
     """Test one threshold frozen independently of the certification data."""
 
@@ -482,7 +525,8 @@ def certify_selective_threshold(
         raise ValueError("alpha must be in (0, 1)")
     score_array, error_values = _metric_arrays(scores, entirely_wrong)
     errors_array = error_values.astype(bool)
-    mask = score_array >= threshold
+    eligible_array = _eligibility_array(eligible, len(score_array))
+    mask = eligible_array & (score_array >= threshold)
     accepted = int(mask.sum())
     errors = int(errors_array[mask].sum())
     upper = clopper_pearson_upper(errors, accepted, delta)

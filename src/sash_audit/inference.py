@@ -223,20 +223,18 @@ class QwenVLAuditor:
                 output_scores=True,
             )
         generated_ids = output.sequences[0, prompt_length : prompt_length + len(output.scores)]
-        transition = self.model.compute_transition_scores(
-            output.sequences,
-            output.scores,
-            getattr(output, "beam_indices", None),
-            normalize_logits=True,
-        )[0]
+        selected_logprobs = [
+            float(step_scores[0].float().log_softmax(dim=-1)[generated_ids[index]])
+            for index, step_scores in enumerate(output.scores)
+        ]
         special_ids = set(self.processor.tokenizer.all_special_ids)
         usable_positions = [
             index
             for index, token_id in enumerate(generated_ids.tolist())
-            if token_id not in special_ids and index < transition.shape[0]
+            if token_id not in special_ids
         ]
         answer_ids = generated_ids[usable_positions]
-        real_logprobs = [float(transition[index]) for index in usable_positions]
+        real_logprobs = [selected_logprobs[index] for index in usable_positions]
         answer = self.processor.decode(answer_ids, skip_special_tokens=True).strip()
 
         blank = Image.new("RGB", image.size, color=(127, 127, 127))

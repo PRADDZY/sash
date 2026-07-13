@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import random
-from collections.abc import Iterable, Mapping, Sequence, Sized
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -14,6 +14,26 @@ DEFAULT_SEED = 20260712
 CORRUPTIONS = ("blur", "low_light", "low_resolution")
 EVALUATION_SPLITS = ("fit", "certification", "test")
 DEFAULT_SHIFT_COUNTS = {"fit": 300, "certification": 300, "test": 600}
+PILOT_CASES = {
+    "VizWiz_val_00000000": "none",
+    "VizWiz_val_00000001": "none",
+    "VizWiz_val_00000002": "none",
+    "VizWiz_val_00000003": "none",
+    "VizWiz_val_00000004": "none",
+    "VizWiz_val_00000005": "none",
+    "VizWiz_val_00000006": "none",
+    "VizWiz_val_00000007": "none",
+    "VizWiz_val_00000008": "none",
+    "VizWiz_val_00000009": "none",
+    "VizWiz_val_00000010": "none",
+    "VizWiz_val_00000011": "none",
+    "VizWiz_val_00000434": "low_resolution",
+    "VizWiz_val_00001450": "blur",
+    "VizWiz_val_00001872": "low_light",
+    "VizWiz_val_00003164": "low_light",
+    "VizWiz_val_00003750": "low_resolution",
+    "VizWiz_val_00004294": "blur",
+}
 
 
 @dataclass(frozen=True)
@@ -148,9 +168,10 @@ def build_manifest(
     *,
     seed: int = DEFAULT_SEED,
     shift_counts: Mapping[str, int] = DEFAULT_SHIFT_COUNTS,
-    expected_natural_rows: int | None = None,
-) -> list[ManifestRow]:
-    """Save original/corrupted images and return the frozen evaluation manifest."""
+    expected_source_rows: int | None = None,
+    pilot_cases: Mapping[str, str] = PILOT_CASES,
+) -> tuple[list[ManifestRow], list[ManifestRow]]:
+    """Save images and return disjoint evaluation and reserved-pilot manifests."""
 
     output_dir = Path(output_dir)
     image_dir = output_dir / "images"
@@ -158,21 +179,14 @@ def build_manifest(
     image_dir.mkdir(parents=True, exist_ok=True)
     corrupted_dir.mkdir(parents=True, exist_ok=True)
 
-    if expected_natural_rows is not None:
-        row_count = expected_natural_rows
-    elif isinstance(dataset, Sized):
-        row_count = len(dataset)
-    else:
-        raise ValueError("expected_natural_rows is required for streaming datasets")
-    assignment = random_question_split([{}] * row_count, seed=seed)
     metadata: list[dict[str, object]] = []
-    manifest: list[ManifestRow] = []
+    pilot_manifest: list[ManifestRow] = []
     seen_case_ids: set[str] = set()
+    source_rows = 0
 
-    for index, row in enumerate(dataset):
-        if index >= row_count:
-            raise ValueError(f"dataset contains more than the expected {row_count} rows")
-        filename = _filename(row, index)
+    for source_index, row in enumerate(dataset):
+        source_rows += 1
+        filename = _filename(row, source_index)
         case_id = Path(filename).stem
         if case_id in seen_case_ids:
             raise ValueError(f"duplicate natural case_id: {case_id}")
@@ -180,7 +194,7 @@ def build_manifest(
         image_path = image_dir / f"{case_id}.jpg"
         image = row.get("image")
         if not isinstance(image, Image.Image):
-            raise TypeError(f"row {index} image is not a PIL image")
+            raise TypeError(f"row {source_index} image is not a PIL image")
         if not image_path.exists():
             rgb = image.convert("RGB")
             rgb.save(image_path, format="JPEG", quality=95)
@@ -189,32 +203,86 @@ def build_manifest(
         if source_answers is None:
             source_answers = row.get("answers")
         if not isinstance(source_answers, Sequence) or not source_answers:
-            raise ValueError(f"row {index} has no reference answers")
+            raise ValueError(f"row {source_index} has no reference answers")
         answers = tuple(_answer_text(answer) for answer in source_answers)
         row_metadata: dict[str, object] = {
+            "case_id": case_id,
             "filename": filename,
+            "row_index": source_index,
             "question": str(row["question"]),
             "answers": answers,
             "answerable": _is_answerable(row),
             "answer_type": _answer_type(row),
+            "image_path": str(image_path),
         }
-        metadata.append(row_metadata)
-        manifest.append(
+
+        if case_id not in pilot_cases:
+            metadata.append(row_metadata)
+            continue
+
+        corruption = pilot_cases[case_id]
+        if corruption == "none":
+            pilot_manifest.append(
+                ManifestRow(
+                    case_id=case_id,
+                    row_index=source_index,
+                    evaluation_split="pilot",
+                    regime="natural",
+                    question=str(row_metadata["question"]),
+                    answers=answers,
+                    answerable=bool(row_metadata["answerable"]),
+                    answer_type=str(row_metadata["answer_type"]),
+                    image_path=str(image_path),
+                )
+            )
+            continue
+
+        shifted_case_id = f"{case_id}__{corruption}"
+        shifted_path = corrupted_dir / f"{shifted_case_id}.jpg"
+        if not shifted_path.exists():
+            with Image.open(image_path) as clear:
+                shifted = corrupt_image(clear, corruption)
+                shifted.save(shifted_path, format="JPEG", quality=95)
+                shifted.close()
+        pilot_manifest.append(
             ManifestRow(
-                case_id=case_id,
-                row_index=index,
-                evaluation_split=assignment[index],
-                regime="natural",
+                case_id=shifted_case_id,
+                row_index=source_index,
+                evaluation_split="pilot",
+                regime="shift",
                 question=str(row_metadata["question"]),
                 answers=answers,
                 answerable=bool(row_metadata["answerable"]),
                 answer_type=str(row_metadata["answer_type"]),
-                image_path=str(image_path),
+                image_path=str(shifted_path),
+                corruption=corruption,
+                clear_image_path=str(image_path),
+                source_case_id=case_id,
             )
         )
 
-    if len(metadata) != row_count:
-        raise ValueError(f"expected {row_count} natural rows, found {len(metadata)}")
+    if expected_source_rows is not None and source_rows != expected_source_rows:
+        raise ValueError(f"expected {expected_source_rows} source rows, found {source_rows}")
+    if len(pilot_manifest) != len(pilot_cases):
+        raise ValueError(
+            f"expected {len(pilot_cases)} reserved pilot rows, found {len(pilot_manifest)}"
+        )
+
+    assignment = random_question_split(metadata, seed=seed)
+    manifest = [
+        ManifestRow(
+            case_id=str(row["case_id"]),
+            row_index=int(row["row_index"]),
+            evaluation_split=assignment[index],
+            regime="natural",
+            question=str(row["question"]),
+            answers=tuple(row["answers"]),
+            answerable=bool(row["answerable"]),
+            answer_type=str(row["answer_type"]),
+            image_path=str(row["image_path"]),
+        )
+        for index, row in enumerate(metadata)
+    ]
     selected = select_shift_indices(
         metadata, assignment, split_counts=shift_counts, seed=seed
     )
@@ -222,8 +290,7 @@ def build_manifest(
     for split in EVALUATION_SPLITS:
         for index, corruption in selected[split]:
             source = metadata[index]
-            filename = _filename(source, index)
-            source_case_id = Path(filename).stem
+            source_case_id = str(source["case_id"])
             clear_path = image_dir / f"{source_case_id}.jpg"
             shifted_case_id = f"{source_case_id}__{corruption}"
             shifted_path = corrupted_dir / f"{shifted_case_id}.jpg"
@@ -239,7 +306,7 @@ def build_manifest(
             manifest.append(
                 ManifestRow(
                     case_id=shifted_case_id,
-                    row_index=index,
+                    row_index=int(source["row_index"]),
                     evaluation_split=split,
                     regime="shift",
                     question=str(source["question"]),
@@ -252,10 +319,10 @@ def build_manifest(
                     source_case_id=source_case_id,
                 )
             )
-    return manifest
+    return manifest, pilot_manifest
 
 
-def validate_manifest(rows: Sequence[ManifestRow], *, expected_natural_rows: int = 4319) -> None:
+def validate_manifest(rows: Sequence[ManifestRow], *, expected_natural_rows: int = 4301) -> None:
     """Fail fast on split leakage, duplicates, or unexpected study counts."""
 
     natural = [row for row in rows if row.regime == "natural"]
@@ -269,6 +336,8 @@ def validate_manifest(rows: Sequence[ManifestRow], *, expected_natural_rows: int
     if len(case_ids) != len(set(case_ids)):
         raise ValueError("manifest case IDs are not unique")
     natural_split = {row.case_id: row.evaluation_split for row in natural}
+    if set(natural_split) & set(PILOT_CASES):
+        raise ValueError("reserved pilot questions leaked into the evaluation manifest")
     for row in shifted:
         crossed_split = (
             row.source_case_id is None
@@ -278,6 +347,21 @@ def validate_manifest(rows: Sequence[ManifestRow], *, expected_natural_rows: int
             raise ValueError(f"shifted view crossed a split: {row.case_id}")
         if not row.clear_image_path:
             raise ValueError(f"shifted view lacks a clear acquisition image: {row.case_id}")
+        if row.source_case_id in PILOT_CASES:
+            raise ValueError(f"reserved pilot source leaked into shift data: {row.case_id}")
+
+
+def validate_pilot_manifest(rows: Sequence[ManifestRow]) -> None:
+    if len(rows) != len(PILOT_CASES):
+        raise ValueError(f"expected {len(PILOT_CASES)} pilot rows, found {len(rows)}")
+    expected = {
+        case_id if corruption == "none" else f"{case_id}__{corruption}"
+        for case_id, corruption in PILOT_CASES.items()
+    }
+    if {row.case_id for row in rows} != expected:
+        raise ValueError("pilot manifest does not match the frozen reserved cases")
+    if any(row.evaluation_split != "pilot" for row in rows):
+        raise ValueError("pilot rows must use the pilot split")
 
 
 def write_manifest(rows: Iterable[ManifestRow], path: Path) -> None:

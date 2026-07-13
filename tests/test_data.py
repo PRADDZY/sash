@@ -77,7 +77,14 @@ def test_manifest_keeps_clear_and_corrupted_views_in_same_split(tmp_path) -> Non
         for index in range(30)
     ]
     counts = {"fit": 3, "certification": 3, "test": 3}
-    manifest = build_manifest(rows, tmp_path, shift_counts=counts, seed=3)
+    manifest, pilot = build_manifest(
+        rows,
+        tmp_path,
+        shift_counts=counts,
+        seed=3,
+        pilot_cases={},
+    )
+    assert pilot == []
     assert len(manifest) == 39
     natural_splits = {
         row.case_id: row.evaluation_split for row in manifest if row.regime == "natural"
@@ -85,6 +92,40 @@ def test_manifest_keeps_clear_and_corrupted_views_in_same_split(tmp_path) -> Non
     for shifted in (row for row in manifest if row.regime == "shift"):
         assert natural_splits[shifted.source_case_id] == shifted.evaluation_split
         assert shifted.clear_image_path
+
+
+def test_reserved_pilot_sources_are_disjoint_from_evaluation(tmp_path) -> None:
+    rows = [
+        {
+            "filename": f"VizWiz_val_{index:08d}.jpg",
+            "image": Image.new("RGB", (16, 12), color=(index, index, index)),
+            "question": "What is shown?",
+            "answers": ["object"] * 10,
+            "answerable": 1,
+            "answer_type": "other",
+        }
+        for index in range(32)
+    ]
+    reserved = {
+        "VizWiz_val_00000000": "none",
+        "VizWiz_val_00000001": "blur",
+    }
+    manifest, pilot = build_manifest(
+        rows,
+        tmp_path,
+        shift_counts={"fit": 3, "certification": 3, "test": 3},
+        seed=3,
+        pilot_cases=reserved,
+    )
+    evaluation_sources = {
+        row.source_case_id or row.case_id
+        for row in manifest
+    }
+    assert not (set(reserved) & evaluation_sources)
+    assert {row.case_id for row in pilot} == {
+        "VizWiz_val_00000000",
+        "VizWiz_val_00000001__blur",
+    }
 
 
 def test_unknown_corruption_is_rejected() -> None:

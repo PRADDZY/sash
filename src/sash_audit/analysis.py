@@ -12,12 +12,15 @@ import numpy as np
 import pandas as pd
 from scipy.stats import binomtest
 
+from .data import PILOT_CASES
+from .inference import MODEL_SPECS
 from .metrics import (
     aurc,
     best_effective_reliability_threshold,
     binary_auroc,
     bootstrap_mean_difference,
     brier_score,
+    canonical_prediction,
     certify_selective_threshold,
     coverage_at_risk,
     effective_reliability,
@@ -25,6 +28,7 @@ from .metrics import (
     fit_platt_calibrator,
     learn_selective_threshold,
     selective_curve,
+    vqa_accuracy,
 )
 
 SCORE_COLUMNS = {
@@ -42,9 +46,9 @@ EXPLORATORY_DELTA = 0.05
 BOOTSTRAP_SAMPLES = 2_000
 BOOTSTRAP_SEED = 20260712
 EXPECTED_COUNTS = {
-    ("natural", "fit"): 864,
-    ("natural", "certification"): 864,
-    ("natural", "test"): 2591,
+    ("natural", "fit"): 860,
+    ("natural", "certification"): 860,
+    ("natural", "test"): 2581,
     ("shift", "fit"): 300,
     ("shift", "certification"): 300,
     ("shift", "test"): 600,
@@ -66,14 +70,22 @@ def read_predictions(paths: Iterable[Path]) -> pd.DataFrame:
     required = {
         "case_id",
         "model_key",
+        "model_id",
+        "model_revision",
         "evaluation_split",
         "regime",
+        "source_case_id",
         "answerable",
         "answer_type",
         "corruption",
         "vqa_score",
         "entirely_wrong",
         "false_answer_on_unanswerable",
+        "generated_answer",
+        "reference_answers",
+        "generated_token_ids",
+        "normalized_answer",
+        "generated_tokens",
         *SCORE_COLUMNS.values(),
     }
     missing = required - set(frame.columns)
@@ -87,6 +99,37 @@ def read_predictions(paths: Iterable[Path]) -> pd.DataFrame:
         raise ValueError("prediction scores must all be finite")
     if not frame["vqa_score"].between(0, 1).all():
         raise ValueError("VQA scores must be in [0, 1]")
+    for model_key, (model_id, revision) in MODEL_SPECS.items():
+        model = frame[frame["model_key"] == model_key]
+        if not model.empty and (
+            set(model["model_id"]) != {model_id}
+            or set(model["model_revision"]) != {revision}
+        ):
+            raise ValueError(f"{model_key} predictions do not match the pinned checkpoint")
+    source_ids = frame["source_case_id"].where(
+        frame["source_case_id"].notna(), frame["case_id"]
+    )
+    leaked = set(source_ids.astype(str)) & set(PILOT_CASES)
+    if leaked:
+        raise ValueError(f"reserved pilot sources leaked into predictions: {sorted(leaked)}")
+    recomputed = np.array(
+        [
+            vqa_accuracy(prediction, answers)
+            for prediction, answers in zip(
+                frame["generated_answer"], frame["reference_answers"], strict=True
+            )
+        ]
+    )
+    if not np.allclose(frame["vqa_score"].to_numpy(float), recomputed, atol=1e-12):
+        raise ValueError("stored VQA scores do not match official recomputation")
+    if not np.array_equal(frame["entirely_wrong"].to_numpy(bool), recomputed == 0):
+        raise ValueError("stored entirely-wrong labels do not match VQA scores")
+    normalized = frame["generated_answer"].map(canonical_prediction)
+    if not normalized.equals(frame["normalized_answer"].astype(str)):
+        raise ValueError("stored semantic abstention labels do not match recomputation")
+    token_counts = frame["generated_token_ids"].map(len).to_numpy(int)
+    if not np.array_equal(frame["generated_tokens"].to_numpy(int), token_counts):
+        raise ValueError("stored generated-token counts do not match token IDs")
     return frame
 
 
@@ -130,11 +173,22 @@ def _split_pipeline(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd
     return fit, certification, test
 
 
-def _accepted_metrics(test: pd.DataFrame, score_column: str, threshold: float) -> dict[str, float]:
-    mask = test[score_column].to_numpy(float) >= threshold
+def _substantive(frame: pd.DataFrame) -> np.ndarray:
+    return (
+        (frame["normalized_answer"].astype(str) != "unanswerable")
+        & (frame["generated_tokens"].to_numpy(int) > 0)
+    ).to_numpy(bool)
+
+
+def _accepted_metrics(
+    test: pd.DataFrame, score_column: str, threshold: float
+) -> dict[str, float | int]:
+    mask = _substantive(test) & (test[score_column].to_numpy(float) >= threshold)
     accepted = int(mask.sum())
     if not accepted:
         return {
+            "test_accepted": 0,
+            "test_errors": 0,
             "test_coverage": 0.0,
             "test_entirely_wrong_risk": math.nan,
             "test_soft_risk": math.nan,
@@ -142,6 +196,8 @@ def _accepted_metrics(test: pd.DataFrame, score_column: str, threshold: float) -
         }
     accuracy = test.loc[mask, "vqa_score"].to_numpy(float)
     return {
+        "test_accepted": accepted,
+        "test_errors": int((accuracy == 0).sum()),
         "test_coverage": accepted / len(test),
         "test_entirely_wrong_risk": float((accuracy == 0).mean()),
         "test_soft_risk": float((1 - accuracy).mean()),
@@ -161,6 +217,9 @@ def _pipeline_summary(
     test_accuracy = test["vqa_score"].to_numpy(float)
     test_correct = test_accuracy > 0
     fit_correct = fit["vqa_score"].to_numpy(float) > 0
+    fit_substantive = _substantive(fit)
+    certification_substantive = _substantive(certification)
+    test_substantive = _substantive(test)
     calibrator = fit_platt_calibrator(fit[score_column], fit_correct)
     probabilities = calibrator.predict(test_scores)
 
@@ -168,6 +227,7 @@ def _pipeline_summary(
         fit[score_column],
         fit["vqa_score"].to_numpy(float) == 0,
         risk_limit=PRIMARY_FIT_RISK,
+        eligible=fit_substantive,
     )
     is_primary = regime == "natural" and score_name == "likelihood"
     delta = PRIMARY_PER_MODEL_DELTA if is_primary else EXPLORATORY_DELTA
@@ -177,20 +237,31 @@ def _pipeline_summary(
         threshold=threshold,
         alpha=PRIMARY_ALPHA,
         delta=delta,
+        eligible=certification_substantive,
     )
     deployed_threshold = threshold if certificate.certified else math.inf
+    candidate_metrics = {
+        f"candidate_{key}": value
+        for key, value in _accepted_metrics(test, score_column, threshold).items()
+    }
 
     row: dict[str, object] = {
         "model_key": model_key,
         "regime": regime,
         "score": score_name,
         "confirmatory": is_primary,
+        "analysis_status": "confirmatory" if is_primary else "exploratory_marginal",
         "fit_n": len(fit),
         "certification_n": len(certification),
         "test_n": len(test),
         "vqa_accuracy": float(test_accuracy.mean()),
         "entirely_wrong_rate": float((test_accuracy == 0).mean()),
-        "aurc": aurc(test_scores, test_accuracy),
+        "substantive_prediction_rate": float(test_substantive.mean()),
+        "aurc": aurc(
+            test_scores,
+            test_correct.astype(float),
+            eligible=test_substantive,
+        ),
         "correctness_auroc": binary_auroc(test_scores, test_correct),
         "platt_status": calibrator.status,
         "correctness_ece_10bin": expected_calibration_error(
@@ -209,18 +280,27 @@ def _pipeline_summary(
         "certification_upper_bound": certificate.upper_bound,
         "certified": certificate.certified,
         "deployed_threshold": deployed_threshold,
+        **candidate_metrics,
         **_accepted_metrics(test, score_column, deployed_threshold),
     }
     for risk_limit in RISK_LIMITS:
-        point = coverage_at_risk(test_scores, test_accuracy, risk_limit)
-        row[f"oracle_test_coverage_at_{risk_limit:.2f}_soft_risk"] = (
+        point = coverage_at_risk(
+            test_scores,
+            test_correct.astype(float),
+            risk_limit,
+            eligible=test_substantive,
+        )
+        row[f"oracle_test_coverage_at_{risk_limit:.2f}_entirely_wrong_risk"] = (
             point.coverage if point else 0.0
         )
     for cost in ERROR_COSTS:
         phi_threshold, _ = best_effective_reliability_threshold(
-            fit[score_column], fit["vqa_score"], cost
+            fit[score_column],
+            fit["vqa_score"],
+            cost,
+            eligible=fit_substantive,
         )
-        answered = test_scores >= phi_threshold
+        answered = test_substantive & (test_scores >= phi_threshold)
         row[f"phi_{int(cost)}"] = effective_reliability(test_accuracy, answered, cost)
         row[f"phi_{int(cost)}_threshold"] = phi_threshold
         row[f"phi_{int(cost)}_coverage"] = float(answered.mean())
@@ -268,7 +348,12 @@ def _aligned_models(test: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return finetuned, base
 
 
-def _paired_rows(frame: pd.DataFrame, *, bootstrap_samples: int) -> list[dict[str, object]]:
+def _paired_rows(
+    frame: pd.DataFrame,
+    summary: pd.DataFrame,
+    *,
+    bootstrap_samples: int,
+) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     seed_offset = 0
     for regime in ("natural", "shift"):
@@ -346,7 +431,9 @@ def _paired_rows(frame: pd.DataFrame, *, bootstrap_samples: int) -> list[dict[st
                 (
                     "aurc",
                     lambda sample, score_column=column: aurc(
-                        sample[score_column], sample["vqa_score"]
+                        sample[score_column],
+                        (sample["vqa_score"].to_numpy(float) > 0).astype(float),
+                        eligible=_substantive(sample),
                     ),
                 ),
                 (
@@ -370,6 +457,36 @@ def _paired_rows(frame: pd.DataFrame, *, bootstrap_samples: int) -> list[dict[st
                         "regime": regime,
                         "score": score_name,
                         "metric": metric,
+                        "n": len(base),
+                        "finetuned_minus_base": difference,
+                        "ci_2.5%": lower,
+                        "ci_97.5%": upper,
+                    }
+                )
+            if regime == "natural" and score_name == "likelihood":
+                operating = summary[
+                    (summary["regime"] == regime) & (summary["score"] == score_name)
+                ].set_index("model_key")
+                finetuned_answered = _substantive(finetuned) & (
+                    finetuned[column].to_numpy(float)
+                    >= float(operating.loc["finetuned", "deployed_threshold"])
+                )
+                base_answered = _substantive(base) & (
+                    base[column].to_numpy(float)
+                    >= float(operating.loc["base", "deployed_threshold"])
+                )
+                difference, lower, upper = bootstrap_mean_difference(
+                    finetuned_answered.astype(float),
+                    base_answered.astype(float),
+                    samples=bootstrap_samples,
+                    seed=BOOTSTRAP_SEED + seed_offset,
+                )
+                seed_offset += 1
+                rows.append(
+                    {
+                        "regime": regime,
+                        "score": score_name,
+                        "metric": "deployed_test_coverage",
                         "n": len(base),
                         "finetuned_minus_base": difference,
                         "ci_2.5%": lower,
@@ -400,9 +517,12 @@ def analyze_predictions(
                 summary_rows.append(
                     _pipeline_summary(model_key, regime, score_name, subset)
                 )
-    return pd.DataFrame(summary_rows), pd.DataFrame(
-        _paired_rows(frame, bootstrap_samples=bootstrap_samples)
+    summary = pd.DataFrame(summary_rows)
+    paired = pd.DataFrame(
+        _paired_rows(frame, summary, bootstrap_samples=bootstrap_samples)
     )
+    paired["analysis_status"] = "secondary_paired_comparison"
+    return summary, paired
 
 
 def subgroup_metrics(frame: pd.DataFrame) -> pd.DataFrame:
@@ -428,11 +548,13 @@ def subgroup_metrics(frame: pd.DataFrame) -> pd.DataFrame:
             rows.append(
                 {
                     "model_key": model_key,
+                    "analysis_status": "exploratory_subgroup",
                     "dimension": dimension,
                     "value": value,
                     "n": len(subset),
                     "vqa_accuracy": float(subset["vqa_score"].mean()),
                     "entirely_wrong_rate": float((subset["vqa_score"] == 0).mean()),
+                    "semantic_abstention_rate": float((~_substantive(subset)).mean()),
                     "false_answer_on_unanswerable_rate": (
                         float(subset["false_answer_on_unanswerable"].astype(bool).mean())
                         if not subset["answerable"].astype(bool).any()
@@ -456,7 +578,11 @@ def write_risk_coverage_figures(
         fig, ax = plt.subplots(figsize=(6.4, 4.2), constrained_layout=True)
         for model_key, color in (("base", "#526D82"), ("finetuned", "#D35400")):
             model = test[test["model_key"] == model_key]
-            points = selective_curve(model["mean_logprob"], model["vqa_score"])
+            points = selective_curve(
+                model["mean_logprob"],
+                (model["vqa_score"].to_numpy(float) > 0).astype(float),
+                eligible=_substantive(model),
+            )
             ax.plot(
                 [point.coverage for point in points],
                 [point.risk for point in points],
@@ -469,11 +595,11 @@ def write_risk_coverage_figures(
                 & (summary["score"] == "likelihood")
             ].iloc[0]
             if bool(operating["certified"]) and math.isfinite(
-                float(operating["test_soft_risk"])
+                float(operating["test_entirely_wrong_risk"])
             ):
                 ax.scatter(
                     [operating["test_coverage"]],
-                    [operating["test_soft_risk"]],
+                    [operating["test_entirely_wrong_risk"]],
                     color=color,
                     edgecolor="black",
                     zorder=3,
@@ -481,7 +607,7 @@ def write_risk_coverage_figures(
         ax.axhline(PRIMARY_ALPHA, color="black", linestyle="--", linewidth=1, alpha=0.7)
         ax.set(
             xlabel="Coverage",
-            ylabel="Soft VQA risk among answered questions",
+            ylabel="Entirely-wrong risk among substantive answers",
             xlim=(0, 1),
             ylim=(0, 1),
         )
@@ -552,26 +678,57 @@ def _write_result_macros(summary: pd.DataFrame, paired: pd.DataFrame, path: Path
         (paired["regime"] == "natural") & (paired["metric"] == "vqa_accuracy")
     ].iloc[0]
 
+    def number(value: float, digits: int = 3) -> str:
+        return "--" if not math.isfinite(float(value)) else f"{float(value):.{digits}f}"
+
     def percent(value: float) -> str:
-        return "NA" if not math.isfinite(float(value)) else f"{100 * float(value):.1f}\\%"
+        return "--" if not math.isfinite(float(value)) else f"{100 * float(value):.1f}\\%"
+
+    def threshold(value: float) -> str:
+        return "\\ensuremath{\\infty}" if math.isinf(float(value)) else number(value)
+
+    base = values["base"]
+    tuned = values["finetuned"]
+    finding = (
+        f"The base policy {'passed' if base.certified else 'failed'} independent "
+        f"certification and deployed at {percent(base.test_coverage)} test coverage; "
+        f"the tuned policy {'passed' if tuned.certified else 'failed'} and deployed "
+        f"at {percent(tuned.test_coverage)} coverage."
+    )
 
     lines = [
         "% Generated by sash_audit.analysis; do not edit.",
-        f"\\newcommand{{\\BaseAccuracy}}{{{percent(values['base'].vqa_accuracy)}}}",
-        f"\\newcommand{{\\FinetunedAccuracy}}{{{percent(values['finetuned'].vqa_accuracy)}}}",
-        f"\\newcommand{{\\AccuracyDelta}}{{{percent(accuracy_delta['finetuned_minus_base'])}}}",
-        f"\\newcommand{{\\AccuracyDeltaLow}}{{{percent(accuracy_delta['ci_2.5%'])}}}",
-        f"\\newcommand{{\\AccuracyDeltaHigh}}{{{percent(accuracy_delta['ci_97.5%'])}}}",
-        f"\\newcommand{{\\BaseAURC}}{{{values['base'].aurc:.3f}}}",
-        f"\\newcommand{{\\FinetunedAURC}}{{{values['finetuned'].aurc:.3f}}}",
-        f"\\newcommand{{\\BaseCertified}}{{{'yes' if values['base'].certified else 'no'}}}",
-        "\\newcommand{\\FinetunedCertified}{"
-        f"{'yes' if values['finetuned'].certified else 'no'}"
-        "}",
-        f"\\newcommand{{\\BaseCoverage}}{{{percent(values['base'].test_coverage)}}}",
-        f"\\newcommand{{\\FinetunedCoverage}}{{{percent(values['finetuned'].test_coverage)}}}",
-        f"\\newcommand{{\\BaseAnsweredRisk}}{{{percent(values['base'].test_entirely_wrong_risk)}}}",
-        f"\\newcommand{{\\FinetunedAnsweredRisk}}{{{percent(values['finetuned'].test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\FitN}}{{{int(base.fit_n)}}}",
+        f"\\renewcommand{{\\CertN}}{{{int(base.certification_n)}}}",
+        f"\\renewcommand{{\\TestN}}{{{int(base.test_n)}}}",
+        f"\\renewcommand{{\\BaseVQA}}{{{percent(base.vqa_accuracy)}}}",
+        f"\\renewcommand{{\\TunedVQA}}{{{percent(tuned.vqa_accuracy)}}}",
+        f"\\renewcommand{{\\BaseThreshold}}{{{threshold(base.fit_threshold)}}}",
+        f"\\renewcommand{{\\TunedThreshold}}{{{threshold(tuned.fit_threshold)}}}",
+        f"\\renewcommand{{\\BaseCertErrorsAccepted}}{{{int(base.certification_errors)}/{int(base.certification_accepted)}}}",
+        f"\\renewcommand{{\\TunedCertErrorsAccepted}}{{{int(tuned.certification_errors)}/{int(tuned.certification_accepted)}}}",
+        f"\\renewcommand{{\\BaseCertCoverage}}{{{percent(base.certification_coverage)}}}",
+        f"\\renewcommand{{\\TunedCertCoverage}}{{{percent(tuned.certification_coverage)}}}",
+        f"\\renewcommand{{\\BaseCertUpper}}{{{percent(base.certification_upper_bound)}}}",
+        f"\\renewcommand{{\\TunedCertUpper}}{{{percent(tuned.certification_upper_bound)}}}",
+        f"\\renewcommand{{\\BaseCertDecision}}{{{'Pass' if base.certified else 'Fail'}}}",
+        f"\\renewcommand{{\\TunedCertDecision}}{{{'Pass' if tuned.certified else 'Fail'}}}",
+        f"\\renewcommand{{\\BaseTestCoverage}}{{{percent(base.test_coverage)}}}",
+        f"\\renewcommand{{\\TunedTestCoverage}}{{{percent(tuned.test_coverage)}}}",
+        f"\\renewcommand{{\\BaseTestErrorsAccepted}}{{{int(base.test_errors)}/{int(base.test_accepted)}}}",
+        f"\\renewcommand{{\\TunedTestErrorsAccepted}}{{{int(tuned.test_errors)}/{int(tuned.test_accepted)}}}",
+        f"\\renewcommand{{\\BaseTestRisk}}{{{percent(base.test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\TunedTestRisk}}{{{percent(tuned.test_entirely_wrong_risk)}}}",
+        f"\\renewcommand{{\\BaseECE}}{{{number(base.correctness_ece_10bin)}}}",
+        f"\\renewcommand{{\\TunedECE}}{{{number(tuned.correctness_ece_10bin)}}}",
+        f"\\renewcommand{{\\BaseBrier}}{{{number(base.correctness_brier)}}}",
+        f"\\renewcommand{{\\TunedBrier}}{{{number(tuned.correctness_brier)}}}",
+        f"\\renewcommand{{\\VQADelta}}{{{percent(accuracy_delta['finetuned_minus_base'])}}}",
+        f"\\renewcommand{{\\VQADeltaLow}}{{{percent(accuracy_delta['ci_2.5%'])}}}",
+        f"\\renewcommand{{\\VQADeltaHigh}}{{{percent(accuracy_delta['ci_97.5%'])}}}",
+        f"\\renewcommand{{\\BaseAURC}}{{{number(base.aurc)}}}",
+        f"\\renewcommand{{\\TunedAURC}}{{{number(tuned.aurc)}}}",
+        f"\\renewcommand{{\\PrimaryFinding}}{{{finding}}}",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -596,7 +753,9 @@ def write_analysis(
     _write_result_macros(summary, paired, output_dir / "paper_results.tex")
 
     failures = frame[
-        (frame["evaluation_split"] == "test") & (frame["vqa_score"] == 0)
+        (frame["evaluation_split"] == "test")
+        & (frame["vqa_score"] == 0)
+        & _substantive(frame)
     ].copy()
     failures["priority"] = failures.groupby(["model_key", "regime"])["mean_logprob"].rank(
         ascending=False, method="first"
@@ -621,6 +780,7 @@ def write_analysis(
     audit = audit[columns].copy()
     audit["failure_category"] = ""
     audit["recommended_action"] = ""
+    audit["privacy_screening"] = ""
     audit["review_notes"] = ""
     audit.to_csv(output_dir / "failure_audit.csv", index=False)
 

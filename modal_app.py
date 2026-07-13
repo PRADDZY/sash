@@ -21,6 +21,7 @@ ARTIFACT_VOLUME_NAME = "sash-vlm-safety"
 MODEL_VOLUME_PATH = Path("/models")
 ARTIFACT_VOLUME_PATH = Path("/vol")
 MANIFEST_PATH = ARTIFACT_VOLUME_PATH / "data" / "manifest.jsonl"
+PILOT_MANIFEST_PATH = ARTIFACT_VOLUME_PATH / "data" / "pilot_manifest.jsonl"
 PREDICTION_DIR = ARTIFACT_VOLUME_PATH / "predictions"
 MODEL_PATHS = {
     "base": MODEL_VOLUME_PATH / "base",
@@ -38,7 +39,7 @@ MODEL_REPOSITORIES = {
 }
 DATASET_ID = "lmms-lab/VizWiz-VQA"
 DATASET_REVISION = "d428a2dae984f79cf1b9d99467dfa883e0c30686"
-NATURAL_ROWS = 4319
+NATURAL_ROWS = 4301
 SHIFT_ROWS = 1200
 GPU_TYPE = "A10"
 GPU_HOURLY_USD = 1.1016
@@ -117,18 +118,30 @@ def download_models() -> dict[str, str]:
 def prepare_dataset(seed: int = 20260712) -> dict[str, int | str]:
     from datasets import load_dataset
 
-    from sash_audit.data import build_manifest, read_manifest, validate_manifest, write_manifest
+    from sash_audit.data import (
+        build_manifest,
+        read_manifest,
+        validate_manifest,
+        validate_pilot_manifest,
+        write_manifest,
+    )
 
     artifact_volume.reload()
-    if MANIFEST_PATH.exists():
+    if MANIFEST_PATH.exists() and PILOT_MANIFEST_PATH.exists():
         rows = read_manifest(MANIFEST_PATH)
-        validate_manifest(rows)
-        return {
-            "status": "already_prepared",
-            "manifest_rows": len(rows),
-            "natural_rows": sum(row.regime == "natural" for row in rows),
-            "shift_rows": sum(row.regime == "shift" for row in rows),
-        }
+        pilot_rows = read_manifest(PILOT_MANIFEST_PATH)
+        try:
+            validate_manifest(rows)
+            validate_pilot_manifest(pilot_rows)
+        except ValueError:
+            pass
+        else:
+            return {
+                "status": "already_prepared",
+                "manifest_rows": len(rows),
+                "natural_rows": sum(row.regime == "natural" for row in rows),
+                "shift_rows": sum(row.regime == "shift" for row in rows),
+            }
 
     dataset = load_dataset(
         DATASET_ID,
@@ -136,14 +149,16 @@ def prepare_dataset(seed: int = 20260712) -> dict[str, int | str]:
         revision=DATASET_REVISION,
         streaming=True,
     )
-    rows = build_manifest(
+    rows, pilot_rows = build_manifest(
         dataset,
         ARTIFACT_VOLUME_PATH / "data",
         seed=seed,
-        expected_natural_rows=NATURAL_ROWS,
+        expected_source_rows=4319,
     )
     validate_manifest(rows)
+    validate_pilot_manifest(pilot_rows)
     write_manifest(rows, MANIFEST_PATH)
+    write_manifest(pilot_rows, PILOT_MANIFEST_PATH)
     artifact_volume.commit()
     return {
         "status": "prepared",
@@ -151,25 +166,6 @@ def prepare_dataset(seed: int = 20260712) -> dict[str, int | str]:
         "natural_rows": sum(row.regime == "natural" for row in rows),
         "shift_rows": sum(row.regime == "shift" for row in rows),
     }
-
-
-def _pilot_selection(rows: list[object]) -> list[object]:
-    natural_answerable = [
-        row for row in rows if row.regime == "natural" and row.answerable
-    ][:6]
-    natural_unanswerable = [
-        row for row in rows if row.regime == "natural" and not row.answerable
-    ][:6]
-    shifted = []
-    for corruption in ("blur", "low_light", "low_resolution"):
-        shifted.extend(
-            [
-                row
-                for row in rows
-                if row.regime == "shift" and row.corruption == corruption
-            ][:2]
-        )
-    return natural_answerable + natural_unanswerable + shifted
 
 
 def _project_cost(stats: dict[str, float | int]) -> float:
@@ -207,17 +203,18 @@ def infer_model(model_key: str, pilot: bool = False) -> dict[str, float | int | 
     if model_key not in MODEL_PATHS:
         raise ValueError("model_key must be base or finetuned")
     artifact_volume.reload()
-    if not MANIFEST_PATH.exists():
+    manifest_path = PILOT_MANIFEST_PATH if pilot else MANIFEST_PATH
+    if not manifest_path.exists():
         raise RuntimeError("dataset manifest is missing; run --stage prepare")
     if not (MODEL_PATHS[model_key] / "config.json").exists():
         raise RuntimeError("model weights are missing; run --stage download")
-    rows = read_manifest(MANIFEST_PATH)
-    selected = _pilot_selection(rows) if pilot else rows
+    selected = read_manifest(manifest_path)
+    filename = f"pilot_{model_key}.jsonl" if pilot else f"{model_key}.jsonl"
     stats = run_inference(
         selected,
         model_key=model_key,
         model_path=MODEL_PATHS[model_key],
-        output_path=PREDICTION_DIR / f"{model_key}.jsonl",
+        output_path=PREDICTION_DIR / filename,
         commit_callback=artifact_volume.commit,
     )
     result: dict[str, float | int | str] = {"model_key": model_key, **stats}
@@ -261,7 +258,15 @@ def main(stage: str, model: str = "") -> None:
             infer_model.remote(key, pilot=True)
             for key in ("base", "finetuned")
         ]
-        projected = sum(float(result["projected_gpu_cost_usd"]) for result in results)
+        costs = [
+            float(result["projected_gpu_cost_usd"])
+            for result in results
+            if "projected_gpu_cost_usd" in result
+        ]
+        if len(costs) != 2:
+            print({"models": results, "status": "pilot rows already checkpointed"})
+            return
+        projected = sum(costs)
         print({"models": results, "projected_primary_gpu_cost_usd": projected})
         if projected > PRIMARY_GPU_BUDGET_USD:
             raise RuntimeError(

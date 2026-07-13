@@ -36,19 +36,33 @@
 \newcommand{\TunedVQA}{\ph{fine-tuned mean VQA score}}
 \newcommand{\BaseThreshold}{\ph{base threshold}}
 \newcommand{\TunedThreshold}{\ph{fine-tuned threshold}}
+\newcommand{\BaseCertErrorsAccepted}{\ph{base certification errors/accepted}}
+\newcommand{\TunedCertErrorsAccepted}{\ph{tuned certification errors/accepted}}
+\newcommand{\BaseCertCoverage}{\ph{base certification coverage}}
+\newcommand{\TunedCertCoverage}{\ph{tuned certification coverage}}
 \newcommand{\BaseCertUpper}{\ph{base certification upper bound}}
 \newcommand{\TunedCertUpper}{\ph{fine-tuned certification upper bound}}
 \newcommand{\BaseCertDecision}{\ph{base pass/fail}}
 \newcommand{\TunedCertDecision}{\ph{fine-tuned pass/fail}}
 \newcommand{\BaseTestCoverage}{\ph{base test coverage}}
 \newcommand{\TunedTestCoverage}{\ph{fine-tuned test coverage}}
+\newcommand{\BaseTestErrorsAccepted}{\ph{base test errors/accepted}}
+\newcommand{\TunedTestErrorsAccepted}{\ph{tuned test errors/accepted}}
 \newcommand{\BaseTestRisk}{\ph{base test risk}}
 \newcommand{\TunedTestRisk}{\ph{fine-tuned test risk}}
 \newcommand{\BaseECE}{\ph{base ECE}}
 \newcommand{\TunedECE}{\ph{fine-tuned ECE}}
 \newcommand{\BaseBrier}{\ph{base Brier score}}
 \newcommand{\TunedBrier}{\ph{fine-tuned Brier score}}
+\newcommand{\VQADelta}{\ph{fine-tuned minus base VQA}}
+\newcommand{\VQADeltaLow}{\ph{VQA difference lower bound}}
+\newcommand{\VQADeltaHigh}{\ph{VQA difference upper bound}}
+\newcommand{\BaseAURC}{\ph{base AURC}}
+\newcommand{\TunedAURC}{\ph{tuned AURC}}
 \newcommand{\PrimaryFinding}{\ph{one-sentence primary result after certification and test}}
+\IfFileExists{../artifacts/analysis/paper_results.tex}{%
+  \input{../artifacts/analysis/paper_results.tex}%
+}{}
 
 \newcommand{\placeholderfigure}[2]{%
   \fbox{\parbox[c][#1][c]{0.94\linewidth}{\centering\ph{#2}}}%
@@ -65,8 +79,8 @@
 
 \begin{abstract}
 Vision--language models can become more accurate after domain fine-tuning while
-remaining unreliable about when to answer.  We audit a base model and a
-VizWiz-tuned counterpart under a deliberately narrow safety definition:
+remaining unreliable about when to answer.  We audit a base model and a public
+checkpoint presented as VizWiz-tuned under a deliberately narrow safety definition:
 avoiding \emph{entirely wrong} answers while retaining useful coverage.  Questions
 are split once, by a simple seeded random assignment, into a threshold and
 calibrator-fit set (\FitFraction), an independent certification set
@@ -173,7 +187,9 @@ receive the same image and question and the same instruction: answer from visibl
 only, emit exactly ``unanswerable'' when evidence is insufficient, and otherwise
 return a short answer without explanation.  Decoding is greedy, batch size is one,
 and the output limit is 32 tokens.  No calibration label is available to either
-model during generation.
+model during generation.  For deterministic storage, every decoded natural image
+is converted to RGB and re-encoded once as JPEG at quality 95; both models receive
+the same stored file.
 
 Answers are normalized and scored against the human references using the standard
 VQA leave-one-out consensus rule.  Mean VQA score is a secondary utility measure;
@@ -183,6 +199,8 @@ the primary binary loss treats partial credit differently from a complete miss:
   \label{eq:error}
 \end{equation}
 Thus $E_i=1$ only when the generated answer receives no annotator-supported credit.
+The broader semantic mapping used to identify explicit abstentions is not used to
+rewrite predictions for this official score.
 
 \subsection{Primary selection score}
 
@@ -193,8 +211,11 @@ the length-normalized conditional log-likelihood
   \log p_\theta(\hat y_{it}\mid x_i,q_i,\hat y_{i,<t}).
   \label{eq:score}
 \end{equation}
-Higher values indicate greater confidence.  A threshold $\tau$ yields the frozen
-answer policy $A_i(\tau)=\mathbb{1}\{S_i\geq\tau\}$.  Coverage and selective risk
+Higher values indicate greater confidence.  Let $G_i=1$ only when the decoded
+response contains at least one non-special token and is not semantically mapped to
+the explicit abstention label ``unanswerable.''  A threshold $\tau$ yields the frozen
+substantive-answer policy
+$A_i(\tau)=G_i\mathbb{1}\{S_i\geq\tau\}$.  Coverage and selective risk
 on a set $D$ are
 \begin{equation}
  \widehat C_D(\tau)=\frac{1}{|D|}\sum_{i\in D}A_i(\tau),\qquad
@@ -202,18 +223,21 @@ on a set $D$ are
  \frac{\sum_{i\in D}A_i(\tau)E_i}{\sum_{i\in D}A_i(\tau)}.
  \label{eq:riskcoverage}
 \end{equation}
-We report the risk as undefined when no question is answered; zero coverage is not
-counted as a successful certificate.
+We report the risk as undefined when no substantive answer is issued; zero coverage
+is not counted as a successful certificate.  Thus a confident ``unanswerable'' may
+be a useful semantic abstention, but it cannot inflate answer coverage.
 
 \subsection{Frozen split and threshold fitting}
 
-The evaluation pool is all 4,319 examples in the \texttt{val} split of
-\texttt{lmms-lab/VizWiz-VQA}, pinned at commit \texttt{d428a2d}; no question is
-excluded.  With question as the sampling unit, a single pseudo-random permutation
+We load all 4,319 examples in the \texttt{val} split of
+\texttt{lmms-lab/VizWiz-VQA}, pinned at commit \texttt{d428a2d}.  Eighteen source
+questions used to validate instrumentation are frozen as a disjoint pilot and
+excluded from every analysis split, leaving 4,301 evaluation questions.  With
+question as the sampling unit, a single pseudo-random permutation
 using seed \SplitSeed{} assigns \FitFraction{} to fit $F$, \CertFraction{} to
 independent certification $C$, and \TestFraction{} to untouched test $T$.  The
-assignment is shared by both models and stored before inference.  This gives 864
-questions in $F$, 864 in $C$, and 2,591 in $T$.  There is no stratification,
+assignment is shared by both models and stored before final inference.  This gives
+\FitN{} questions in $F$, \CertN{} in $C$, and \TestN{} in $T$.  There is no stratification,
 resampling, or threshold-specific split.
 
 For each model separately, we enumerate score cutpoints on $F$ without splitting
@@ -239,7 +263,8 @@ fixed to the base and fine-tuned natural-regime likelihood policies.  A pipeline
 passes exactly when $U_{\mathrm{CP}}\leq\alpha$, with $\alpha=\TargetRisk$ and
 $\delta=\PrimaryFailureProb$ per policy.  By Bonferroni's inequality, the
 probability of any false certification in this two-policy family is at most
-\FamilyFailureProb{} under i.i.d. question sampling from the target distribution.
+\FamilyFailureProb{} under i.i.d. question sampling from the target distribution,
+provided both frozen checkpoints are independent of the certification labels.
 Equivalently, conditional on the frozen fit-stage pipelines, the probability over
 the certification draw that either policy is deployed with population
 $\Pr(E=1\mid A=1)>\TargetRisk$ is at most \FamilyFailureProb.  This is a
@@ -248,9 +273,15 @@ a policy is safe after it passes.  Certification is queried once per frozen prim
 we do not inspect alternative thresholds on $C$, retune after failure, or use $C$
 for Platt fitting.
 
-After this decision, $\hat\tau$ is applied unchanged to $T$.  We report test
-coverage, selective risk, and accepted/error counts whether certification passes
-or fails, but only a passing pipeline supports the prespecified risk-control claim.
+The tuned checkpoint's certificate is interpretable as a prospective guarantee only
+conditional on its training and selection having excluded these evaluation labels.
+Because its public provenance does not establish that condition, we label its bound
+conditional/descriptive unless independent training records confirm no overlap.
+
+After this decision, $\hat\tau$ is applied unchanged to $T$.  We retain its candidate
+coverage, selective risk, and accepted/error counts whether certification passes or
+fails, but headline deployed metrics use abstain-all after failure, and only a
+passing pipeline supports the prespecified risk-control claim.
 The test set is used once for the final comparison and never to modify either
 policy.  The Bonferroni statement applies only to the two confirmatory policies.
 Any secondary grounding, shift, or acquisition check uses marginal
@@ -261,11 +292,12 @@ test metrics are retained only as diagnostic counterfactuals.
 \subsection{Calibration and exploratory diagnostics}
 
 Calibration is descriptive and does not alter the primary gate.  A two-parameter
-Platt map $g(s)=\sigma(as+b)$ is fit on $F$ only to predict
+Platt map $g(s)=\sigma(as+b)$ is fit on standardized scores from $F$ only, with
+an L2 slope penalty of $10^{-4}$, to predict
 $\mathbb{1}\{E_i=0\}$.  Its parameters are frozen before evaluating 10-bin expected
 calibration error (ECE), Brier score, and reliability diagrams on $T$
 \citep{pmlr-v70-guo17a}.  If $F$ contains only one correctness class or numerical
-optimization fails, a Laplace-smoothed constant predictor is used and recorded as a
+optimization fails, an add-one-half (Jeffreys-prior mean) constant predictor is used and recorded as a
 fallback; neither $C$ nor $T$ is used for fitting.
 
 Two additional score families are exploratory.  A visual-sensitivity score
@@ -287,8 +319,8 @@ at $\delta=\ExploratoryFailureProb$.
 
 \begin{table}[t]
 \centering
-\caption{Primary audit.  Every magenta field is populated only from the frozen
-analysis artifact.  ``CP upper'' is the one-sided certification bound at
+\caption{Primary audit populated from the frozen analysis artifact.  ``CP upper''
+is the one-sided certification bound at
 $\delta=\PrimaryFailureProb$ in
 Eq.~\ref{eq:cp}; test risk is descriptive for the already frozen policy.}
 \label{tab:primary}
@@ -298,8 +330,8 @@ Eq.~\ref{eq:cp}; test risk is descriptive for the already frozen policy.}
 \toprule
 Pipeline & Mean VQA & $\hat\tau$ & Cert. $e/n$ & Cert. cov. & CP upper & Pass? & Test cov. & Test risk & ECE / Brier \\
 \midrule
-Base & \BaseVQA & \BaseThreshold & \ph{base e/n} & \ph{base cert. cov.} & \BaseCertUpper & \BaseCertDecision & \BaseTestCoverage & \BaseTestRisk & \BaseECE{} / \BaseBrier \\
-Fine-tuned & \TunedVQA & \TunedThreshold & \ph{tuned e/n} & \ph{tuned cert. cov.} & \TunedCertUpper & \TunedCertDecision & \TunedTestCoverage & \TunedTestRisk & \TunedECE{} / \TunedBrier \\
+Base & \BaseVQA & \BaseThreshold & \BaseCertErrorsAccepted & \BaseCertCoverage & \BaseCertUpper & \BaseCertDecision & \BaseTestCoverage & \BaseTestRisk & \BaseECE{} / \BaseBrier \\
+Fine-tuned & \TunedVQA & \TunedThreshold & \TunedCertErrorsAccepted & \TunedCertCoverage & \TunedCertUpper & \TunedCertDecision & \TunedTestCoverage & \TunedTestRisk & \TunedECE{} / \TunedBrier \\
 \bottomrule
 \end{tabular}
 }
@@ -308,8 +340,9 @@ Fine-tuned & \TunedVQA & \TunedThreshold & \ph{tuned e/n} & \ph{tuned cert. cov.
 \subsection{Primary outcome}
 
 Table~\ref{tab:primary} records the only confirmatory certification checks.
-\PrimaryFinding.  The comparison sentence must report accepted and error counts,
-not percentages alone: \ph{base and fine-tuned certification/test count summary}.
+\PrimaryFinding{}  The base certification and deployed-test counts are
+\BaseCertErrorsAccepted{} and \BaseTestErrorsAccepted{} errors/accepted; the tuned
+counts are \TunedCertErrorsAccepted{} and \TunedTestErrorsAccepted{}.
 Fine-tuning is described as improving selective reliability only if the frozen
 fine-tuned policy provides more useful coverage at the target risk without relying
 on a failed or post-hoc certificate.  Otherwise, the result is reported as null,
@@ -317,17 +350,20 @@ mixed, or adverse rather than rescued with another cutoff.
 
 \begin{figure}[t]
   \centering
-  \placeholderfigure{1.55in}{risk--coverage curves with frozen operating points}
+  \IfFileExists{../artifacts/analysis/figures/risk_coverage_natural.pdf}{%
+    \includegraphics[width=0.72\linewidth]{../artifacts/analysis/figures/risk_coverage_natural.pdf}%
+  }{\placeholderfigure{1.55in}{risk--coverage curves with frozen operating points}}
   \caption{Test risk--coverage curves for the primary score.  Curves are
-  descriptive; filled markers denote thresholds selected on $F$, and marker
-  outlines encode the independent certification decision.  Add uncertainty bands
-  only if their construction is fixed before viewing results.}
+  descriptive and include only substantive answers; filled markers denote deployed
+  operating points that passed independent certification.}
   \label{fig:riskcoverage}
 \end{figure}
 
-Figure~\ref{fig:riskcoverage} shows \ph{concise curve comparison without causal
-overclaim}.  The unrestricted paired VQA-score difference is
-\ph{estimate and 95\% paired-bootstrap interval}; this secondary comparison
+Figure~\ref{fig:riskcoverage} gives normalized AURC values of \BaseAURC{} for the
+base pipeline and \TunedAURC{} for the tuned pipeline (lower is better).  The
+unrestricted paired VQA-score difference is \VQADelta{} with a 2,000-resample
+percentile paired-bootstrap interval [\VQADeltaLow{}, \VQADeltaHigh{}] at seed
+\SplitSeed{}; this secondary comparison
 separates average task utility from selective reliability.
 
 \subsection{Calibration and shift}
@@ -354,7 +390,7 @@ both pipelines and corruption types; they remain exploratory.
 
 \section{Failure Analysis}
 
-We manually review a frozen sample of high-confidence test errors and assign one
+We manually review a frozen sample of high-confidence substantive-answer test errors and assign one
 primary category: unrecognizable image, target outside the frame, OCR failure,
 question ambiguity, unsupported object/detail, or reference disagreement.  Review
 is conducted after primary metrics are frozen and cannot change correctness labels.
