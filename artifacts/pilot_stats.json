@@ -1,0 +1,32 @@
+{
+  "app_run": "https://modal.com/apps/superhexagon2021/main/ap-vTnoMUBoBrCENWd48CEOKt",
+  "gpu": "NVIDIA A10",
+  "gpu_hourly_usd": 1.1016,
+  "models": {
+    "base": {
+      "exact_zero_token_logprobs": 0,
+      "load_seconds": 36.879828225,
+      "natural_cases": 12,
+      "natural_seconds": 14.370880305000014,
+      "peak_memory_gib": 16.97265625,
+      "projected_full_gpu_cost_usd": 2.2257247074938795,
+      "shift_cases": 6,
+      "shift_seconds": 10.429836555000009
+    },
+    "finetuned": {
+      "exact_zero_token_logprobs": 0,
+      "load_seconds": 29.724484828,
+      "natural_cases": 12,
+      "natural_seconds": 12.417627084999978,
+      "peak_memory_gib": 16.962890625,
+      "projected_full_gpu_cost_usd": 2.0136276025098825,
+      "shift_cases": 6,
+      "shift_seconds": 10.500366842999995
+    }
+  },
+  "projected_total_gpu_cost_usd": 4.239352310003762,
+  "promotion_budget_usd": 55.0,
+  "rows_per_model": 18,
+  "score_normalization": "float64 log-softmax over bfloat16 model logits",
+  "status": "passed"
+}
