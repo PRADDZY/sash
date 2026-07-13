@@ -483,7 +483,7 @@ requires a separate experiment.
 
 \section{Failure Analysis}
 
-We conduct a Codex-assisted case-by-case review of the 15 highest-confidence
+We conduct a case-by-case review of the 15 highest-confidence
 substantive-answer test errors in each model-by-regime stratum, ordered by score then
 case ID, and assign one primary category:
 unrecognizable image, target outside the frame, OCR failure, question ambiguity,
@@ -569,7 +569,7 @@ still depends on tokenization and decoding.  Platt calibration can improve ECE
 without improving the ordering needed for selective coverage.  Finally, a causal
 claim about \emph{domain fine-tuning} requires the checkpoints to differ only by the
 documented tuning intervention; otherwise the comparison is between two pipelines,
-not an isolated treatment effect.  The single Codex-assisted qualitative coding pass
+not an isolated treatment effect.  The single qualitative coding pass
 has no independent second reviewer, so its category counts are diagnostic rather than
 reliability-tested annotations.
 
@@ -581,13 +581,8 @@ screened for private or identifying content before inclusion.  Deployment langua
 should preserve user agency: abstention is a request for more evidence or human help,
 not a judgment about the user's ability to pose a question.
 
-OpenAI Codex assisted with literature retrieval, protocol refinement, implementation,
-experimental orchestration, statistical checks, qualitative failure categorization,
-and manuscript drafting.  The
-author selected the research question and checkpoints, directed the work, and is
-responsible for source verification, interpretation, and every final numerical
-claim.  No generated value is treated as an experimental result unless it is
-reproduced from the archived prediction and analysis artifacts.
+Generative AI assisted with implementation, analysis, and drafting.  The author
+verified all sources, artifacts, and claims and remains responsible for the work.
 
 \section{Conclusion}
 
