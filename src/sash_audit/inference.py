@@ -195,7 +195,7 @@ class QwenVLAuditor:
             # Older patch releases may ignore tensor-valued logits_to_keep.
             logits = logits[:, prompt_length - 1 : prompt_length + answer_ids.shape[0] - 1]
         values = (
-            logits.float()
+            logits.double()
             .log_softmax(dim=-1)
             .gather(-1, answer_ids.view(1, -1, 1))
             .squeeze(0)
@@ -224,7 +224,7 @@ class QwenVLAuditor:
             )
         generated_ids = output.sequences[0, prompt_length : prompt_length + len(output.scores)]
         selected_logprobs = [
-            float(step_scores[0].float().log_softmax(dim=-1)[generated_ids[index]])
+            float(step_scores[0].double().log_softmax(dim=-1)[generated_ids[index]])
             for index, step_scores in enumerate(output.scores)
         ]
         special_ids = set(self.processor.tokenizer.all_special_ids)
