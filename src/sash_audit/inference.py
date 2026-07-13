@@ -421,7 +421,7 @@ def run_inference(
                 written += 1
                 regime_counts[row.regime] += 1
                 regime_seconds[row.regime] += time.perf_counter() - item_started
-                if written % 25 == 0:
+                if written % 100 == 0:
                     handle.flush()
                     os.fsync(handle.fileno())
                     if commit_callback:
