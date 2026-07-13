@@ -75,6 +75,7 @@ uv run modal volume get sash-vlm-safety predictions/finetuned.jsonl artifacts/pr
 uv run sash-audit artifacts/predictions/base.jsonl artifacts/predictions/finetuned.jsonl --output artifacts/analysis
 
 # Tectonic 0.16.0 or newer
+$env:SOURCE_DATE_EPOCH = "1783900800"  # 2026-07-13 00:00:00 UTC
 Push-Location paper
 tectonic main.tex
 Pop-Location
