@@ -94,3 +94,10 @@ Expand-Archive artifacts/analysis_bundle.zip artifacts/analysis -Force
 official VQA scores, semantic-abstention drift, duplicate IDs, and token-count drift.
 The final provenance file records SHA-256 hashes for the two raw prediction files and
 both frozen manifests.
+
+## arXiv upload
+
+Upload `paper/arxiv-source.zip`. It contains only the manuscript, bibliography,
+generated result macros, and the figure used by the paper. Inspect arXiv's generated
+PDF preview before finalizing the submission; the local gate uses Tectonic 0.16.9,
+not arXiv's AutoTeX environment.
