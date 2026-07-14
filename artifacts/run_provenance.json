@@ -137,7 +137,7 @@
       "failure_review_csv": "66699da5bcedfe1c9cd64773d38bee7f6da62506a58ca6b9b827a2dfadc1d9ca",
       "publication_examples_csv": "dd969a9e71ea6d344ff0a07f1593bba576d292acf3705f5e4014d7c24e95e61e",
       "paper_results_tex": "f1b95c5c84e4f01d12a1adf5ec14dd1fa44b70a55c73854e27e6da521dad9bb4",
-      "paper_pdf": "45bfb00c2627005e25f09143cd0a56a8a5c978b7b90fcf024f39543156bb5624",
+      "paper_pdf": "e7e70912b58f65c7274b971dbaf310d4552b9c8d1ee5d5255c6926de9fc16dd8",
       "final_modal_analysis_bundle": "3ebf2eaa604ef0763eec15c32798bdc9799280cceafa21a53ae213e511420b32"
     }
   },
@@ -165,7 +165,7 @@
   },
   "manuscript": {
     "pages": 8,
-    "pdf_bytes": 134344,
+    "pdf_bytes": 133356,
     "source_date_epoch": 1783900800,
     "unresolved_citations": 0,
     "placeholder_tokens": 0,

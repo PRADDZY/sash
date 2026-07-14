@@ -113,8 +113,8 @@
 }{\PackageError{sash-paper}{Missing generated analysis artifact}{Run sash-audit first.}}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 
-\title{Does a Public VizWiz Checkpoint Improve Selective Reliability?\\
-\large A Risk-Controlled Audit of Assistive VQA}
+\title{Selective Reliability on VizWiz:\\
+\large A Risk-Controlled Audit of Two Public Vision--Language Pipelines}
 \author{Pratik Daithankar}
 \date{}
 
@@ -122,30 +122,31 @@
 \maketitle
 
 \begin{abstract}
-Vision--language models can become more accurate after domain fine-tuning while
-remaining unreliable about when to answer.  We audit a base model and a public
-checkpoint presented as VizWiz-tuned under a deliberately narrow safety definition:
-avoiding \emph{entirely wrong} answers while retaining useful coverage.  Questions
-are split once, by a simple seeded random assignment, into a threshold and
-calibrator-fit set (\FitFraction), an independent certification set
-(\CertFraction), and an untouched test set (\TestFraction).  The primary
-selection score is mean answer log-likelihood, and the primary error event is an
-official VQA consensus score of zero.  The confirmatory family contains the two
-natural-regime likelihood policies.  Each fit-set threshold is checked exactly
-once on certification using a one-sided Clopper--Pearson upper bound at
-$\alpha=\TargetRisk$ and Bonferroni-adjusted
-$\delta=\PrimaryFailureProb$ per policy, controlling the probability of any false
-certification in the two-policy family at most \FamilyFailureProb.  Thresholds
-are then frozen for test evaluation.  This control is conditional on i.i.d.
-sampling and both checkpoints being independent of the certification labels.
-On \TestN{} untouched natural questions, the public tuned checkpoint raises mean
+Model adaptation can improve average visual-question-answering accuracy without
+making a system reliable about when to answer.  We compare a base
+vision--language model with a public checkpoint presented as VizWiz-tuned, asking
+whether either can issue substantive answers while keeping the entirely-wrong
+rate at or below \TargetRisk{}.  We use a fixed fit/certification/test split
+(\FitFraction/\CertFraction/\TestFraction).  For each pipeline, the fit set
+selects a threshold on mean generated-answer token log-likelihood; the independent
+certification set then applies a one-sided Clopper--Pearson bound with
+Bonferroni-adjusted $\delta=\PrimaryFailureProb$ per policy.  Under i.i.d.
+question sampling and assuming both frozen checkpoints are independent of the
+certification labels, Bonferroni bounds the probability of any false certification
+in this two-policy family by \FamilyFailureProb{}.  Thresholds and decisions are
+frozen before test evaluation.  On
+\TestN{} untouched natural questions, the public tuned checkpoint raises mean
 VQA from \BaseVQA{} to \TunedVQA{} and lowers the entirely-wrong rate from
-\BaseWrongRate{} to \TunedWrongRate{}.  Neither policy's certification bound
-(\BaseCertUpper{} base; \TunedCertUpper{} tuned) meets the \TargetRisk{} target,
-so prescribed deployed coverage is \BaseTestCoverage{} for base and
-\TunedTestCoverage{} for tuned.  This audit concerns selective factual reliability on one
-assistive-VQA distribution; it does not establish jailbreak safety, fairness,
-privacy, robustness to arbitrary shift, or user benefit.
+\BaseWrongRate{} to \TunedWrongRate{}, while its substantive-answer rate falls
+from \BaseSubstantiveRate{} to \TunedSubstantiveRate{}.  However, the
+certification upper bounds (\BaseCertUpper{} base; \TunedCertUpper{} tuned) both
+exceed the \TargetRisk{} target.  Neither natural-regime policy is therefore
+deployed, and prescribed test coverage is \BaseTestCoverage{} for the base
+pipeline and \TunedTestCoverage{} for the tuned pipeline.  Exploratory
+calibration, corruption, grounding, and acquisition analyses do not change this
+decision.  These results compare two public pipelines on one assistive-VQA
+distribution; they neither identify fine-tuning as the cause nor establish
+broader safety or user benefit.
 \end{abstract}
 
 \section{Introduction}
@@ -171,17 +172,17 @@ while answering as many questions as possible.
 Selective VQA makes this trade-off explicit through risk and coverage
 \citep{whitehead2022reliablevqa,Dancette_2023_CVPR}.  This study contributes:
 \begin{itemize}
-  \item a paired base-versus-domain-tuned audit using identical questions,
-        prompts, decoding, scoring, and split assignments;
+  \item a paired audit of a base pipeline and a public checkpoint presented as
+        VizWiz-tuned, using identical questions, prompts, decoding, scoring, and
+        split assignments;
   \item an independent fit/certify/test protocol that prevents test-time threshold
         tuning and reports an exact one-sided certification decision; and
-  \item exploratory grounding and evidence-acquisition diagnostics that are kept
-        separate from the primary certificate.
+  \item exploratory grounding and evidence-acquisition diagnostics that remain
+        separate from the confirmatory certificate.
 \end{itemize}
 
-The central question is not whether a public tuned checkpoint improves a leaderboard
-score, but whether it improves the attainable coverage of answers that survive a fixed,
-auditable risk gate.
+The central question is whether either pipeline retains useful answer coverage
+under a fixed, auditable risk gate---not merely whether their average scores differ.
 
 \section{Related Work}
 
@@ -393,7 +394,7 @@ Public tuned & \TunedVQA & \TunedThreshold & \TunedCertErrorsAccepted & \TunedCe
 }
 \end{table}
 
-\subsection{Primary outcome}
+\subsection{Confirmatory outcome}
 
 Table~\ref{tab:primary} records the only confirmatory certification checks.
 Neither natural-regime policy meets the numerical gate: the base and tuned CP upper
@@ -407,13 +408,12 @@ and \TunedCandidateErrorsAccepted{} errors/answers on test, respectively
 \TunedCandidateCoverage{} at \TunedCandidateRisk{}).  These candidate outcomes are
 diagnostics, not certificates; in particular, zero errors among 35 tuned answers
 cannot repair a bound learned from only 11 accepted certification examples.
-Conditional on the frozen certification outcomes, the paired difference in audit-policy
-test coverage (tuned minus base) is \CoverageDelta{} with a 95\% percentile-bootstrap
-interval [\CoverageDeltaLow{}, \CoverageDeltaHigh{}].
-This degenerate interval is a mechanical consequence of both policies failing; it
-does not show equivalence.  The tuned checkpoint is described as improving selective
-reliability only if its frozen policy provides more useful coverage at the target
-risk without relying on a failed or post-hoc certificate.
+Because both policies fail, deployed test coverage is zero for both.  The paired
+coverage difference is \CoverageDelta{} with a 95\% percentile-bootstrap interval
+[\CoverageDeltaLow{}, \CoverageDeltaHigh{}]; this degenerate interval follows
+mechanically and does not establish equivalence.  The public tuned checkpoint
+therefore improves average task utility but does not demonstrate certified
+selective reliability under the prespecified protocol.
 
 \begin{figure}[t]
   \centering
@@ -439,7 +439,7 @@ public tuned checkpoint has better average task utility and fewer completely wro
 outputs, but it also declines to answer much more often; neither fact supplies the
 missing selective-reliability certificate.
 
-\subsection{Calibration and shift}
+\subsection{Exploratory calibration and shift}
 
 Platt-scaled ECE and Brier scores are \BaseECE{} and \BaseBrier{} for the base
 pipeline and \TunedECE{} and \TunedBrier{} for the public tuned pipeline.  These
@@ -468,7 +468,7 @@ for both pipelines.  This study is
 exploratory, marginal, answerable-only evidence about failure behavior, not a
 transferred or family-wise robustness guarantee.
 
-\subsection{Grounding and acquisition}
+\subsection{Exploratory grounding and acquisition}
 
 The mid-gray-image contrast worsens natural-data correctness ranking: base AUROC
 falls from \BaseAUROC{} to \BaseVisualAUROC{} and normalized partial AURC rises from
@@ -552,8 +552,8 @@ benefit.
 
 \paragraph{Statistical scope.}
 The exact binomial bound relies on an independently selected threshold and i.i.d.
-question sampling from the target distribution for the frozen policy.  Mere
-exchangeability is not asserted as sufficient.  A simple question-level split does not
+question sampling from the target distribution for the frozen policy; we do not
+claim that exchangeability alone is sufficient.  A simple question-level split does not
 protect against unidentified near duplicates or future distribution shift.  The
 two confirmatory natural-regime policies use
 $\delta=\PrimaryFailureProb$ each, giving family-wise false-certification
@@ -586,14 +586,15 @@ verified all sources, artifacts, and claims and remains responsible for the work
 
 \section{Conclusion}
 
-We asked whether a public checkpoint presented as domain-tuned exhibits better
-selective reliability than its base family under a prespecified entirely-wrong risk target.
-The tuned checkpoint improves average VQA and reduces entirely-wrong outputs, but
-neither likelihood policy passes independent certification, so neither provides
-certified selective coverage at the target risk.  This outcome compares two public
-pipelines and does not identify fine-tuning as its cause.  It is bounded to the frozen
-VizWiz evaluation and the fit/certify/test protocol described above; broader safety
-and user-impact claims require separate evidence.
+We audited whether a public checkpoint presented as VizWiz-tuned improves
+selective reliability over its base pipeline at a prespecified entirely-wrong risk
+target.  The tuned checkpoint improves average VQA and reduces entirely-wrong
+outputs, but neither natural-regime likelihood policy passes independent
+certification.  Both therefore have zero certified answer coverage under the
+protocol.  Sparse tuning provenance prevents attributing the observed differences
+causally to fine-tuning.  The findings apply to the frozen VizWiz evaluation and
+the stated fit/certify/test procedure; broader safety and user-impact claims
+require separate evidence.
 
 \renewcommand{\bibfont}{\footnotesize}
 \setlength{\bibsep}{1pt}
