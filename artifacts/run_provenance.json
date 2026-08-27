@@ -41,6 +41,16 @@
       "id": "praddzy/Qwen-VizWiz-8B",
       "revision": "984042ce162749db644dd3e6be19d6f20aafe3cf",
       "provenance_caveat": "The public model card does not provide a complete training-data audit; absence of overlap with VizWiz validation labels is unverified."
+    },
+    "replication": {
+      "smolvlm": {
+        "id": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
+        "revision": "482adb537c021c86670beed01cd58990d01e72e4"
+      },
+      "llava_onevision": {
+        "id": "llava-hf/llava-onevision-qwen2-7b-ov-hf",
+        "revision": "0d50680527681998e456c7b78950205bedd8a068"
+      }
     }
   },
   "inference": {
@@ -93,7 +103,10 @@
     "public_tuned_resume_complete": "ap-WtTmw1D8SaHdZcWa5XYybl",
     "initial_analysis": "ap-iYhlPwPz1o0vq4E5bpmPhB",
     "zip_bundle_analysis": "ap-uAkh7bossbOlGoPmPjBbBU",
-    "final_analysis": "ap-jJOBS4AR7Vfif6qsFpafFu"
+    "final_analysis": "ap-jJOBS4AR7Vfif6qsFpafFu",
+    "smolvlm_replication_complete": "ap-iwAYux1a3gkF1wqojGayOx",
+    "llava_replication_complete": "ap-Hpd1sVCjcnRmGHpz1CEFF1",
+    "replication_analysis": "ap-iWvp8bWYUjEGpUCoTxcFPZ"
   },
   "inference_stats": {
     "base": {
@@ -115,6 +128,19 @@
       "resume_natural_seconds": 4304.9138,
       "resume_shift_seconds": 2129.714,
       "peak_gpu_gib": 17.115
+    },
+    "smolvlm": {
+      "total_rows": 5501,
+      "load_seconds": 19.5792,
+      "inference_seconds": 7195.8980,
+      "natural_seconds": 5162.8770,
+      "shift_seconds": 1914.6197,
+      "peak_gpu_gib": 5.797
+    },
+    "llava_onevision": {
+      "total_rows": 5501,
+      "resumed_rows": 1737,
+      "peak_gpu_gib": 21.6
     }
   },
   "integrity": {
@@ -137,7 +163,14 @@
       "failure_review_csv": "66699da5bcedfe1c9cd64773d38bee7f6da62506a58ca6b9b827a2dfadc1d9ca",
       "publication_examples_csv": "dd969a9e71ea6d344ff0a07f1593bba576d292acf3705f5e4014d7c24e95e61e",
       "paper_results_tex": "f1b95c5c84e4f01d12a1adf5ec14dd1fa44b70a55c73854e27e6da521dad9bb4",
-      "paper_pdf": "e7e70912b58f65c7274b971dbaf310d4552b9c8d1ee5d5255c6926de9fc16dd8",
+      "smolvlm_predictions": "97d19d0b172176c8a537d13b2a04b3fde5d593f702f9a7768348841a249248e0",
+      "llava_onevision_predictions": "6460dedd78dbc9bde77dfe68b8971a7fe01f932a045c1208d7cf9ad3649f3989",
+      "replication_metrics_csv": "780285e71e2495adb01392ae9341bf1f1cf5b0f376f6adea5c8ee88a39e3cd6b",
+      "replication_sensitivity_csv": "b09087dca356f3b5dcbe139a354ba72543923ceade658cc74103b86e1fe45ef5",
+      "replication_metadata_json": "85a4fee4318adeeb03ec9b6792078685b9178da1981a6379c55353bbc115f3c3",
+      "replication_results_tex": "40e6290895693e50346d509000c05e597271ca185bf6b8b1b33031f9512c1326",
+      "paper_pdf": "a20497455c06c254c41bad0b0adcc0c78953628aa03eba2ef0172e1d380d9416",
+      "arxiv_source_zip": "8a3406c1788cfafde3705ed218422b83c3a8863a05fb4155600e8ae7738c47b3",
       "final_modal_analysis_bundle": "3ebf2eaa604ef0763eec15c32798bdc9799280cceafa21a53ae213e511420b32"
     }
   },
@@ -165,7 +198,7 @@
   },
   "manuscript": {
     "pages": 8,
-    "pdf_bytes": 133356,
+    "pdf_bytes": 136226,
     "source_date_epoch": 1783900800,
     "unresolved_citations": 0,
     "placeholder_tokens": 0,

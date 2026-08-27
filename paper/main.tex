@@ -108,9 +108,62 @@
 \newcommand{\BaseShiftTestRisk}{}
 \newcommand{\TunedShiftTestRisk}{}
 \newcommand{\TunedShiftCandidateErrorsAccepted}{}
+\newcommand{\RepRows}{}
+\newcommand{\RepNaturalN}{}
+\newcommand{\RepShiftN}{}
+\newcommand{\RepSensitivityN}{}
+\newcommand{\RepNaturalFitN}{}
+\newcommand{\RepNaturalCertificationN}{}
+\newcommand{\RepNaturalTestN}{}
+\newcommand{\RepShiftFitN}{}
+\newcommand{\RepShiftCertificationN}{}
+\newcommand{\RepShiftTestN}{}
+\newcommand{\SmolNaturalVqa}{}
+\newcommand{\SmolNaturalThreshold}{}
+\newcommand{\SmolNaturalCertErrorsAccepted}{}
+\newcommand{\SmolNaturalCertUpper}{}
+\newcommand{\SmolNaturalCertDecision}{}
+\newcommand{\SmolNaturalTestCoverage}{}
+\newcommand{\SmolNaturalTestErrorsAccepted}{}
+\newcommand{\SmolNaturalTestRisk}{}
+\newcommand{\SmolShiftVqa}{}
+\newcommand{\SmolShiftThreshold}{}
+\newcommand{\SmolShiftCertErrorsAccepted}{}
+\newcommand{\SmolShiftCertUpper}{}
+\newcommand{\SmolShiftCertDecision}{}
+\newcommand{\SmolShiftTestCoverage}{}
+\newcommand{\SmolShiftTestErrorsAccepted}{}
+\newcommand{\SmolShiftTestRisk}{}
+\newcommand{\LlavaNaturalVqa}{}
+\newcommand{\LlavaNaturalThreshold}{}
+\newcommand{\LlavaNaturalCertErrorsAccepted}{}
+\newcommand{\LlavaNaturalCertUpper}{}
+\newcommand{\LlavaNaturalCertDecision}{}
+\newcommand{\LlavaNaturalTestCoverage}{}
+\newcommand{\LlavaNaturalTestErrorsAccepted}{}
+\newcommand{\LlavaNaturalTestRisk}{}
+\newcommand{\LlavaShiftVqa}{}
+\newcommand{\LlavaShiftThreshold}{}
+\newcommand{\LlavaShiftCertErrorsAccepted}{}
+\newcommand{\LlavaShiftCertUpper}{}
+\newcommand{\LlavaShiftCertDecision}{}
+\newcommand{\LlavaShiftTestCoverage}{}
+\newcommand{\LlavaShiftTestErrorsAccepted}{}
+\newcommand{\LlavaShiftTestRisk}{}
+\newcommand{\RepSmolSensitivityRate}{}
+\newcommand{\RepSmolSensitivityUpper}{}
+\newcommand{\RepSmolSensitivityCoverage}{}
+\newcommand{\RepSmolSensitivityRisk}{}
+\newcommand{\RepLlavaSensitivityRate}{}
+\newcommand{\RepLlavaSensitivityUpper}{}
+\newcommand{\RepLlavaSensitivityCoverage}{}
+\newcommand{\RepLlavaSensitivityRisk}{}
 \IfFileExists{../artifacts/analysis/paper_results.tex}{%
   \input{../artifacts/analysis/paper_results.tex}%
 }{\PackageError{sash-paper}{Missing generated analysis artifact}{Run sash-audit first.}}
+\IfFileExists{../artifacts/analysis_replication/replication_results.tex}{%
+  \input{../artifacts/analysis_replication/replication_results.tex}%
+}{\PackageError{sash-paper}{Missing replication analysis artifact}{Run analyze-replication first.}}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 \title{Selective Reliability on VizWiz:\\
@@ -146,7 +199,10 @@ pipeline and \TunedTestCoverage{} for the tuned pipeline.  Exploratory
 calibration, corruption, grounding, and acquisition analyses do not change this
 decision.  These results compare two public pipelines on one assistive-VQA
 distribution; they neither identify fine-tuning as the cause nor establish
-broader safety or user benefit.
+broader safety or user benefit.  A frozen cross-architecture replication over
+\RepRows{} model-question rows (SmolVLM2 and LLaVA-OneVision) also yields no
+certified policy, and none of \RepSensitivityN{} alternative natural-data splits
+certifies either checkpoint.
 \end{abstract}
 
 \section{Introduction}
@@ -177,6 +233,8 @@ Selective VQA makes this trade-off explicit through risk and coverage
         split assignments;
   \item an independent fit/certify/test protocol that prevents test-time threshold
         tuning and reports an exact one-sided certification decision; and
+  \item a frozen cross-architecture replication on two additional public
+        checkpoints, with deterministic split-sensitivity checks; and
   \item exploratory grounding and evidence-acquisition diagnostics that remain
         separate from the confirmatory certificate.
 \end{itemize}
@@ -415,6 +473,59 @@ mechanically and does not establish equivalence.  The public tuned checkpoint
 therefore improves average task utility but does not demonstrate certified
 selective reliability under the prespecified protocol.
 
+\subsection{Cross-architecture replication}
+
+To test whether this outcome depended on the original Qwen family, we froze the
+same fit/certify/test rule and evaluated SmolVLM2-2.2B-Instruct and
+LLaVA-OneVision-Qwen2-7B at pinned public revisions.  The replication contains
+\RepNaturalN{} natural and \RepShiftN{} answerable shifted questions per model;
+the split assignments are \RepNaturalFitN{}/\RepNaturalCertificationN{}/\RepNaturalTestN{}
+and \RepShiftFitN{}/\RepShiftCertificationN{}/\RepShiftTestN{}, respectively.
+Table~\ref{tab:replication} reports the frozen likelihood policy.  Neither
+checkpoint passes the independent gate.  LLaVA-OneVision has high descriptive
+test VQA, but its certified natural coverage is only \LlavaNaturalTestCoverage{}
+and its upper bound is \LlavaNaturalCertUpper{}; SmolVLM2's corresponding values
+are \SmolNaturalTestCoverage{} and \SmolNaturalCertUpper{}.  These are diagnostic
+counterfactuals because a failed gate deploys abstain-all.
+
+\begin{table}[t]
+\centering
+\caption{Frozen cross-architecture replication.  Test risk and coverage are
+diagnostic counterfactuals when certification fails.}
+\label{tab:replication}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccc}
+\toprule
+Model & Regime & Test VQA & $\hat\tau$ & Cert. $e/n$ & CP upper & Test cov. & Test risk \\
+\midrule
+SmolVLM2 & Natural & \SmolNaturalVqa & \SmolNaturalThreshold &
+  \SmolNaturalCertErrorsAccepted & \SmolNaturalCertUpper &
+  \SmolNaturalTestCoverage & \SmolNaturalTestRisk \\
+SmolVLM2 & Shift & \SmolShiftVqa & \SmolShiftThreshold &
+  \SmolShiftCertErrorsAccepted & \SmolShiftCertUpper &
+  \SmolShiftTestCoverage & \SmolShiftTestRisk \\
+LLaVA-OneVision & Natural & \LlavaNaturalVqa & \LlavaNaturalThreshold &
+  \LlavaNaturalCertErrorsAccepted & \LlavaNaturalCertUpper &
+  \LlavaNaturalTestCoverage & \LlavaNaturalTestRisk \\
+LLaVA-OneVision & Shift & \LlavaShiftVqa & \LlavaShiftThreshold &
+  \LlavaShiftCertErrorsAccepted & \LlavaShiftCertUpper &
+  \LlavaShiftTestCoverage & \LlavaShiftTestRisk \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Across \RepSensitivityN{} alternative natural-data permutations, the certified
+rate is \RepSmolSensitivityRate{} for SmolVLM2 and
+\RepLlavaSensitivityRate{} for LLaVA-OneVision.  Median certification upper
+bounds are \RepSmolSensitivityUpper{} and \RepLlavaSensitivityUpper{}, with
+median test coverage of \RepSmolSensitivityCoverage{} and
+\RepLlavaSensitivityCoverage{}.  This sensitivity analysis supports the same
+claim boundary: the observed failure is not repaired by a favorable split, but
+the replication does not establish reliability for other checkpoints or
+distributions.
+
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.72\linewidth]{../artifacts/analysis/figures/risk_coverage_natural.pdf}
@@ -591,10 +702,11 @@ selective reliability over its base pipeline at a prespecified entirely-wrong ri
 target.  The tuned checkpoint improves average VQA and reduces entirely-wrong
 outputs, but neither natural-regime likelihood policy passes independent
 certification.  Both therefore have zero certified answer coverage under the
-protocol.  Sparse tuning provenance prevents attributing the observed differences
-causally to fine-tuning.  The findings apply to the frozen VizWiz evaluation and
-the stated fit/certify/test procedure; broader safety and user-impact claims
-require separate evidence.
+protocol.  The cross-architecture replication reaches the same non-certification
+outcome despite higher descriptive VQA for LLaVA-OneVision.  Sparse tuning
+provenance prevents attributing the observed differences causally to fine-tuning.
+The findings apply to the frozen VizWiz evaluation and the stated fit/certify/test
+procedure; broader safety and user-impact claims require separate evidence.
 
 \renewcommand{\bibfont}{\footnotesize}
 \setlength{\bibsep}{1pt}

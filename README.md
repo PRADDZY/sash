@@ -38,6 +38,20 @@ uv run pytest
 uv run ruff check .
 ```
 
+The replication path adds optional tracking with `uv sync --extra tracking`. W&B logs
+only model identity, run configuration, timing, memory, and aggregate progress; it never
+uploads VizWiz questions, images, references, or raw prediction rows. Tracking is enabled
+only when `WANDB_API_KEY` is present.
+
+For Modal-side tracking, create the secret once and select it at invocation time:
+
+```powershell
+uv run modal secret create wandb-api-key WANDB_API_KEY=$env:WANDB_API_KEY
+$env:SASH_MODAL_WANDB_SECRET_NAME = "wandb-api-key"
+```
+
+The secret name is read at CLI startup and is never committed to the repository.
+
 ## Modal stages
 
 ```powershell
@@ -47,15 +61,25 @@ uv run modal setup  # once per machine
 uv run modal run modal_app.py --stage download
 uv run modal run modal_app.py --stage prepare
 uv run modal run modal_app.py --stage pilot
+uv run modal run modal_app.py --stage replication-pilot
 uv run modal run modal_app.py --stage infer --model base
 uv run modal run modal_app.py --stage infer --model finetuned
+uv run modal run modal_app.py --stage infer --model smolvlm
+uv run modal run modal_app.py --stage infer --model llava_onevision
 uv run modal run modal_app.py --stage analyze
+uv run modal run modal_app.py --stage analyze-replication
 ```
 
 The pilot estimates full-run GPU cost on an A10 and stops if the projected primary spend
 exceeds $55, preserving headroom within the reported roughly $70 credit balance. A10 is
 used because this Modal workspace does not currently permit L40S functions without a
 payment method.
+
+`replication-pilot` is a separate hard gate for the two new checkpoints. It stops before
+full inference if their combined projected GPU cost exceeds $20. Phi-4 was evaluated as
+the first candidate but excluded after a pinned-runtime incompatibility; SmolVLM2 and
+LLaVA-OneVision are the declared replication pair, with LLaVA used as the fallback
+checkpoint for the pilot.
 
 Research artifacts are written to the Modal volume `sash-vlm-safety`. Quantitative
 paper macros are generated only from completed predictions; manual review labels are
@@ -90,6 +114,10 @@ uv run modal volume get sash-vlm-safety analysis_bundle.zip artifacts/analysis_b
 Expand-Archive artifacts/analysis_bundle.zip artifacts/analysis -Force
 ```
 
+The replication stage writes `replication_metrics.csv`, `split_sensitivity.csv`,
+`replication_metadata.json`, and the generated `replication_results.tex` macros under
+`analysis_replication/` on the same volume.
+
 `read_predictions` refuses wrong checkpoint revisions, reserved-pilot leakage, stale
 official VQA scores, semantic-abstention drift, duplicate IDs, and token-count drift.
 The final provenance file records SHA-256 hashes for the two raw prediction files and
@@ -98,6 +126,6 @@ both frozen manifests.
 ## arXiv upload
 
 Upload `paper/arxiv-source.zip`. It contains only the manuscript, bibliography,
-generated result macros, and the figure used by the paper. Inspect arXiv's generated
+both generated result-macro files, and the figure used by the paper. Inspect arXiv's generated
 PDF preview before finalizing the submission; the local gate uses Tectonic 0.16.9,
 not arXiv's AutoTeX environment.

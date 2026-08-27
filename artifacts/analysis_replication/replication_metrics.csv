@@ -1,0 +1,5 @@
+model_key,model_id,model_revision,regime,score,fit_threshold,fit_empirical_risk,fit_accepted,certification_accepted,certification_errors,certification_upper_bound,certified,test_accepted,test_coverage,test_errors,test_entirely_wrong_risk,test_answered_vqa_accuracy
+smolvlm,HuggingFaceTB/SmolVLM2-2.2B-Instruct,482adb537c021c86670beed01cd58990d01e72e4,natural,likelihood,-0.0804387109826561,0.0,5,2,0,0.841886116991581,False,5,0.0019372336303758234,2,0.4,0.6
+smolvlm,HuggingFaceTB/SmolVLM2-2.2B-Instruct,482adb537c021c86670beed01cd58990d01e72e4,shift,likelihood,-0.08328064406609757,0.0,2,0,0,1.0,False,2,0.0033333333333333335,1,0.5,0.5
+llava_onevision,llava-hf/llava-onevision-qwen2-7b-ov-hf,0d50680527681998e456c7b78950205bedd8a068,natural,likelihood,-0.006562066569117826,0.0,3,6,1,0.6412345789976748,False,21,0.008136381247578458,0,0.0,0.9619047619047618
+llava_onevision,llava-hf/llava-onevision-qwen2-7b-ov-hf,0d50680527681998e456c7b78950205bedd8a068,shift,likelihood,-0.020724272397878316,0.0,8,13,1,0.36029743526787744,False,20,0.03333333333333333,0,0.0,0.9550000000000001

@@ -1,0 +1,20 @@
+{
+  "model_keys": [
+    "smolvlm",
+    "llava_onevision"
+  ],
+  "risk_target": 0.1,
+  "fit_risk": 0.05,
+  "family_delta": 0.05,
+  "per_model_delta": 0.025,
+  "split_counts": [
+    860,
+    860,
+    2581
+  ],
+  "sensitivity_seeds": [
+    1000,
+    1099
+  ],
+  "rows": 11002
+}
